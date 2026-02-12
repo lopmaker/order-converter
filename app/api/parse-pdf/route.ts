@@ -7,6 +7,11 @@ const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-
 PDFParse.setWorker(workerPath);
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
+export const dynamic = 'force-dynamic'; // Prevent static generation
+
+export async function GET() {
+    return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running' });
+}
 
 export async function POST(req: NextRequest) {
     try {
