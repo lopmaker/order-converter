@@ -39,14 +39,18 @@ export default function Home() {
         const pdfResponse = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
 
         let pdfResult;
-        try {
-          pdfResult = await pdfResponse.json();
-        } catch (e) {
+        if (!pdfResponse.ok) {
           const errorText = await pdfResponse.text();
           throw new Error(`PDF Extraction Failed (${pdfResponse.status}): ${errorText.slice(0, 100) || pdfResponse.statusText}`);
         }
 
-        if (!pdfResponse.ok || !pdfResult.text?.trim()) {
+        try {
+          pdfResult = await pdfResponse.json();
+        } catch (e: any) {
+          throw new Error(`Invalid JSON from PDF Parser: ${e.message}`);
+        }
+
+        if (!pdfResult.text?.trim()) {
           throw new Error(pdfResult.error || 'Failed to extract text');
         }
 
@@ -63,14 +67,18 @@ export default function Home() {
         });
 
         let aiResult;
-        try {
-          aiResult = await aiResponse.json();
-        } catch (e) {
+        if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
           throw new Error(`AI Analysis Failed (${aiResponse.status}): ${errorText.slice(0, 100) || aiResponse.statusText}`);
         }
 
-        if (!aiResponse.ok || !aiResult.success) {
+        try {
+          aiResult = await aiResponse.json();
+        } catch (e: any) {
+          throw new Error(`Invalid JSON from AI: ${e.message}`);
+        }
+
+        if (!aiResult.success) {
           throw new Error(aiResult.error || 'AI parsing failed');
         }
 
