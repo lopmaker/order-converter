@@ -8,6 +8,7 @@ PDFParse.setWorker(workerPath);
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
 export const dynamic = 'force-dynamic'; // Prevent static generation
+export const runtime = 'nodejs'; // Ensure Node.js runtime (not Edge) for pdf-parse
 
 export async function GET() {
     return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running' });
