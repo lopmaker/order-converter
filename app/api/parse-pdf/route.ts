@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFParse } from 'pdf-parse';
 
+// Polyfill DOMMatrix for PDF.js in Node.js environment
+if (typeof global.DOMMatrix === 'undefined') {
+    try {
+        // @ts-ignore
+        global.DOMMatrix = require('dommatrix');
+    } catch (e) {
+        console.warn("Failed to polyfill DOMMatrix", e);
+    }
+}
+
 // NOTE: We are setting worker manually to ensure it works in Vercel/Next.js environment
 import path from 'path';
 
