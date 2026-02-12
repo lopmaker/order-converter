@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFParse } from 'pdf-parse';
-import path from 'path';
+// import { PDFParse } from 'pdf-parse';
+// import path from 'path';
 
-// Fix for "Setting up fake worker failed" in Next.js
-const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
-PDFParse.setWorker(workerPath);
+// // Fix for "Setting up fake worker failed" in Next.js
+// const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
+// PDFParse.setWorker(workerPath);
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
 export const dynamic = 'force-dynamic'; // Prevent static generation
@@ -27,6 +27,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
+        // --- DEBUG MODE: BYPASS PDF PARSING ---
+        console.log("Debug: Received file", file.name, file.size);
+
+        return NextResponse.json({
+            text: "DEBUG MODE: PDF upload connection successful! The logic is currently bypassed to test the server connection.\n\n(This means the 405 error is gone, and I can now fix the library issue.)",
+            pages: 1,
+            numpages: 1,
+            info: {},
+            tables: [],
+        });
+
+        /*
         if (file.type !== 'application/pdf') {
             return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 });
         }
@@ -72,6 +84,7 @@ export async function POST(req: NextRequest) {
             info,
             tables,
         });
+        */
     } catch (error: any) {
         console.error('PDF Parse Error:', error);
         return NextResponse.json(
