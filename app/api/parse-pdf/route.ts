@@ -40,24 +40,26 @@ export async function POST(req: NextRequest) {
         console.log("PDF Parse: buffer created, starting parser...");
 
         // Standard pdf-parse usage
-        const data = await PDFParse(buffer);
+        const parser = new PDFParse({ data: buffer });
+        const textResult = await parser.getText();
+        const infoResult = await parser.getInfo();
 
         console.log("PDF Parse: Success!");
-        console.log(`PDF Parse: Pages: ${data.numpages}, Info: ${JSON.stringify(data.info)}`);
-        console.log(`PDF Parse: Text Length: ${data.text?.length}`);
+        console.log(`PDF Parse: Pages: ${infoResult.total}, Info: ${JSON.stringify(infoResult.info)}`);
+        console.log(`PDF Parse: Text Length: ${textResult.text?.length}`);
 
         // Debug: Log first 100 chars
-        if (data.text) {
-            console.log(`PDF Parse: Preview: ${data.text.substring(0, 100)}...`);
+        if (textResult.text) {
+            console.log(`PDF Parse: Preview: ${textResult.text.substring(0, 100)}...`);
         } else {
             console.warn("PDF Parse WARNING: Extracted text is empty or null");
         }
 
         return NextResponse.json({
-            text: data.text || "",
-            pages: [], // pdf-parse doesn't return per-page text easily in default mode without deeper config, but main text is what we need
-            numpages: data.numpages,
-            info: data.info,
+            text: textResult.text || "",
+            pages: [],
+            numpages: infoResult.total,
+            info: infoResult.info,
             tables: [],
         });
 
