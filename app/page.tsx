@@ -27,12 +27,24 @@ export default function Home() {
       setOrders(prev => prev.map(o => o.id === nextOrder.id ? { ...o, status: 'processing', processingStep: 'Extracting text...' } : o));
 
       try {
+        // Step 0: Check File Size (Vercel limit 4.5MB)
+        if (nextOrder.file.size > 4.5 * 1024 * 1024) {
+          throw new Error(`File too large (${(nextOrder.file.size / 1024 / 1024).toFixed(2)}MB). Vercel limits uploads to 4.5MB.`);
+        }
+
         // Step 1: Extract Text
         const formData = new FormData();
         formData.append('file', nextOrder.file);
 
         const pdfResponse = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
-        const pdfResult = await pdfResponse.json();
+
+        let pdfResult;
+        try {
+          pdfResult = await pdfResponse.json();
+        } catch (e) {
+          const errorText = await pdfResponse.text();
+          throw new Error(`PDF Extraction Failed (${pdfResponse.status}): ${errorText.slice(0, 100) || pdfResponse.statusText}`);
+        }
 
         if (!pdfResponse.ok || !pdfResult.text?.trim()) {
           throw new Error(pdfResult.error || 'Failed to extract text');
@@ -49,7 +61,14 @@ export default function Home() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: extractedText }),
         });
-        const aiResult = await aiResponse.json();
+
+        let aiResult;
+        try {
+          aiResult = await aiResponse.json();
+        } catch (e) {
+          const errorText = await aiResponse.text();
+          throw new Error(`AI Analysis Failed (${aiResponse.status}): ${errorText.slice(0, 100) || aiResponse.statusText}`);
+        }
 
         if (!aiResponse.ok || !aiResult.success) {
           throw new Error(aiResult.error || 'AI parsing failed');
@@ -143,8 +162,6 @@ export default function Home() {
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
 
         {/* Sidebar (File List) */}
-        {/* Only show/render sidebar if we have orders, OR if we want persistent sidebar. 
-            Here we show it if we have orders. */}
         {orders.length > 0 && (
           <div style={{ width: `${leftWidth}%` }} className="h-full flex flex-col border-r bg-muted/10 relative shrink-0">
             <FileList
@@ -175,18 +192,9 @@ export default function Home() {
           {/* Case 2: Active Order Selected */}
           {activeOrder && (
             <div className="flex flex-1 h-full">
-              {/* Active Order View: Split PDF Preview & Form?
-                        Original logic had PDF on left (50%) and Form on right via resizer.
-                        Now we have Sidebar + Main. 
-                        Let's put the PDF viewer as a collapsable or small side panel?
-                        Reviewing user request: "Batch processing".
-                        Common pattern: Grid of orders OR Master-Detail.
-                        Let's keep Sidebar = List, Main = Split View (PDF + Form) just like before but inside the main area.
-                     */}
-
               {/* Inner Split View for Active Order */}
               <div className="flex-1 flex h-full">
-                {/* PDF Preview (Fixed width or another resizer? Let's use flex-1 for form and fixed for PDF for now or just 50/50) */}
+                {/* PDF Preview */}
                 <div className="w-[40%] h-full flex flex-col border-r bg-muted/20">
                   <div className="p-2 border-b text-xs flex justify-between bg-background">
                     <span className="font-semibold truncate">{activeOrder.file.name}</span>
