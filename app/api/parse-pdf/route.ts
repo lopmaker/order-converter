@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { PDFParse } from 'pdf-parse';
-// import path from 'path';
-
-// // Fix for "Setting up fake worker failed" in Next.js
-// const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
-// PDFParse.setWorker(workerPath);
+import PDFParser from 'pdf2json';
+import fs from 'fs';
+import path from 'path';
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
-export const dynamic = 'force-dynamic'; // Prevent static generation
-export const runtime = 'nodejs'; // Ensure Node.js runtime (not Edge) for pdf-parse
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET() {
-    return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running' });
+    return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running (pdf2json)' });
 }
 
 export async function OPTIONS() {
@@ -27,64 +24,55 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
-        // --- DEBUG MODE: BYPASS PDF PARSING ---
-        console.log("Debug: Received file", file.name, file.size);
-
-        return NextResponse.json({
-            text: "DEBUG MODE: PDF upload connection successful! The logic is currently bypassed to test the server connection.\n\n(This means the 405 error is gone, and I can now fix the library issue.)",
-            pages: 1,
-            numpages: 1,
-            info: {},
-            tables: [],
-        });
-
-        /*
         if (file.type !== 'application/pdf') {
             return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 });
         }
 
         const arrayBuffer = await file.arrayBuffer();
-        const uint8 = new Uint8Array(arrayBuffer);
+        const buffer = Buffer.from(arrayBuffer);
 
-        const parser = new PDFParse({
-            data: uint8,
-            verbosity: 0,
+        // Parse using pdf2json (Pure JS, no native dependencies)
+        const pdfParser = new PDFParser(null, 1); // 1 = text only
+
+        const parsedText = await new Promise<string>((resolve, reject) => {
+            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
+            pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+                try {
+                    // Extract text from pages -> texts -> R -> T (URI encoded)
+                    let fullText = "";
+                    if (pdfData && pdfData.Pages) {
+                        pdfData.Pages.forEach((page: any) => {
+                            if (page.Texts) {
+                                page.Texts.forEach((textItem: any) => {
+                                    if (textItem.R && textItem.R.length > 0) {
+                                        // Decode URI component (pdf2json encodes text)
+                                        fullText += decodeURIComponent(textItem.R[0].T) + " ";
+                                    }
+                                });
+                                fullText += "\n\n"; // Page break
+                            }
+                        });
+                    }
+                    resolve(fullText);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            pdfParser.parseBuffer(buffer);
         });
 
-        // Extract text
-        const textResult = await parser.getText();
-
-        // Extract info/metadata
-        let info = null;
-        try {
-            const infoResult = await parser.getInfo();
-            info = infoResult.info;
-        } catch {
-            // Metadata extraction is optional
-        }
-
-        // Try to extract tables (useful for structured orders)
-        let tables: any[] = [];
-        try {
-            const tableResult = await parser.getTable();
-            tables = tableResult.pages.map(p => ({
-                pageNum: p.num,
-                tables: p.tables,
-            }));
-        } catch {
-            // Table extraction is optional
-        }
-
-        await parser.destroy();
+        // Basic pages info mock (pdf2json focuses on text/json structure)
+        // If we needed page count, we'd inspect pdfData.Pages.length
 
         return NextResponse.json({
-            text: textResult.text,
-            pages: textResult.pages,
-            numpages: textResult.total,
-            info,
-            tables,
+            text: parsedText,
+            pages: [], // pdf2json structure is different, we just need text for AI
+            numpages: 0,
+            info: {},
+            tables: [],
         });
-        */
+
     } catch (error: any) {
         console.error('PDF Parse Error:', error);
         return NextResponse.json(
