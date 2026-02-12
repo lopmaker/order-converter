@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PDFParse } from 'pdf-parse';
 
-// NOTE: We are NOT setting worker manually. Relying on default behavior + runtime='nodejs'
-// const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
-// PDFParse.setWorker(workerPath);
+// NOTE: We are setting worker manually to ensure it works in Vercel/Next.js environment
+import path from 'path';
+
+// For local development and Vercel, point to the installed module
+const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
+PDFParse.setWorker(workerPath);
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
 export const dynamic = 'force-dynamic';
