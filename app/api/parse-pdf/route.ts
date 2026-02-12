@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PDFParse } from 'pdf-parse';
+import path from 'path';
 
 // Polyfill DOMMatrix for PDF.js in Node.js environment
 if (typeof global.DOMMatrix === 'undefined') {
@@ -11,9 +11,20 @@ if (typeof global.DOMMatrix === 'undefined') {
     }
 }
 
-// NOTE: We are setting worker manually to ensure it works in Vercel/Next.js environment
-import path from 'path';
+// Ensure Canvas is available for PDF.js
+try {
+    // @ts-ignore
+    if (!global.vote_canvas) {
+        // Triggers registration of canvas if installed
+        require('@napi-rs/canvas');
+    }
+} catch (e) {
+    console.warn("Failed to load @napi-rs/canvas", e);
+}
 
+import { PDFParse } from 'pdf-parse';
+
+// NOTE: We are setting worker manually to ensure it works in Vercel/Next.js environment
 // For local development and Vercel, point to the installed module
 const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
 PDFParse.setWorker(workerPath);
