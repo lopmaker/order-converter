@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import PDFParser from 'pdf2json';
-import fs from 'fs';
-import path from 'path';
+import { PDFParse } from 'pdf-parse';
+
+// NOTE: We are NOT setting worker manually. Relying on default behavior + runtime='nodejs'
+// const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
+// PDFParse.setWorker(workerPath);
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const runtime = 'nodejs'; // Ensure Node.js runtime (not Edge)
 
 export async function GET() {
-    return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running (pdf2json)' });
+    return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running (pdf-parse v2)' });
 }
 
 export async function OPTIONS() {
@@ -16,6 +18,7 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+    console.log("PDF Parse: Processing started...");
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
@@ -24,57 +27,42 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
         }
 
+        console.log(`PDF Parse: File received: ${file.name} (${file.size} bytes)`);
+
         if (file.type !== 'application/pdf') {
             return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 });
         }
 
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const uint8 = new Uint8Array(arrayBuffer);
+        const buffer = Buffer.from(uint8); // pdf-parse prefers Buffer
 
-        // Parse using pdf2json (Pure JS, no native dependencies)
-        const pdfParser = new PDFParser(null, 1); // 1 = text only
+        console.log("PDF Parse: buffer created, starting parser...");
 
-        const parsedText = await new Promise<string>((resolve, reject) => {
-            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
-            pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
-                try {
-                    // Extract text from pages -> texts -> R -> T (URI encoded)
-                    let fullText = "";
-                    if (pdfData && pdfData.Pages) {
-                        pdfData.Pages.forEach((page: any) => {
-                            if (page.Texts) {
-                                page.Texts.forEach((textItem: any) => {
-                                    if (textItem.R && textItem.R.length > 0) {
-                                        // Decode URI component (pdf2json encodes text)
-                                        fullText += decodeURIComponent(textItem.R[0].T) + " ";
-                                    }
-                                });
-                                fullText += "\n\n"; // Page break
-                            }
-                        });
-                    }
-                    resolve(fullText);
-                } catch (e) {
-                    reject(e);
-                }
-            });
+        // Standard pdf-parse usage
+        const data = await PDFParse(buffer);
 
-            pdfParser.parseBuffer(buffer);
-        });
+        console.log("PDF Parse: Success!");
+        console.log(`PDF Parse: Pages: ${data.numpages}, Info: ${JSON.stringify(data.info)}`);
+        console.log(`PDF Parse: Text Length: ${data.text?.length}`);
 
-        // Basic pages info mock (pdf2json focuses on text/json structure)
-        // If we needed page count, we'd inspect pdfData.Pages.length
+        // Debug: Log first 100 chars
+        if (data.text) {
+            console.log(`PDF Parse: Preview: ${data.text.substring(0, 100)}...`);
+        } else {
+            console.warn("PDF Parse WARNING: Extracted text is empty or null");
+        }
 
         return NextResponse.json({
-            text: parsedText,
-            pages: [], // pdf2json structure is different, we just need text for AI
-            numpages: 0,
-            info: {},
+            text: data.text || "",
+            pages: [], // pdf-parse doesn't return per-page text easily in default mode without deeper config, but main text is what we need
+            numpages: data.numpages,
+            info: data.info,
             tables: [],
         });
 
     } catch (error: any) {
-        console.error('PDF Parse Error:', error);
+        console.error('PDF Parse Error (Full):', error);
         return NextResponse.json(
             { error: `Failed to parse PDF: ${error?.message || 'Unknown error'}` },
             { status: 500 }
