@@ -14,6 +14,10 @@ export async function GET() {
     return NextResponse.json({ status: 'ok', message: 'PDF Parser API is running' });
 }
 
+export async function OPTIONS() {
+    return NextResponse.json({}, { status: 200, headers: { 'Allow': 'POST, GET, OPTIONS' } });
+}
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
