@@ -1,18 +1,10 @@
 
 import { db } from "@/db";
 import { orders } from "@/db/schema";
-import { desc, sql } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Package, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { OrdersTable } from "@/components/orders-table";
+import { Package, DollarSign, Calendar } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -97,38 +89,7 @@ export default async function DashboardPage() {
                         <CardTitle>Recent Orders</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {allOrders.length === 0 ? (
-                            <div className="text-center py-10 text-muted-foreground">
-                                No orders found. Connect the database and save an order to see it here.
-                            </div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>VPO Number</TableHead>
-                                        <TableHead>Customer</TableHead>
-                                        <TableHead>Supplier</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead className="text-right">Amount</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {allOrders.map((order) => (
-                                        <TableRow key={order.id}>
-                                            <TableCell className="font-medium">{order.vpoNumber}</TableCell>
-                                            <TableCell>{order.customerName}</TableCell>
-                                            <TableCell>{order.supplierName}</TableCell>
-                                            <TableCell>{order.orderDate}</TableCell>
-                                            <TableCell className="text-right">${order.totalAmount}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary">{order.status}</Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        )}
+                        <OrdersTable initialOrders={allOrders} />
                     </CardContent>
                 </Card>
             </div>
