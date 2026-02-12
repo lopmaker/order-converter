@@ -10,6 +10,7 @@ export interface OrderFile {
     data?: any;
     error?: string;
     processingStep?: string;
+    originalText?: string;
 }
 
 interface FileListProps {
