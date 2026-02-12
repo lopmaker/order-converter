@@ -631,6 +631,24 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Export Options</DropdownMenuLabel>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={async () => {
+                                try {
+                                    const res = await fetch('/api/save-order', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(formData)
+                                    });
+                                    if (!res.ok) throw new Error('Failed to save');
+                                    alert('Order saved to Dashboard!');
+                                } catch (e) {
+                                    alert('Failed to save order. Make sure database is connected.');
+                                    console.error(e);
+                                }
+                            }}>
+                                <Save className="h-4 w-4 mr-2" />
+                                Save to Dashboard (DB)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleSaveJson}>
                                 <Download className="h-4 w-4 mr-2" />
                                 Save as JSON

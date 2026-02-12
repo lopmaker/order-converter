@@ -164,6 +164,11 @@ export default function Home() {
           </div>
           <span>Order Converter AI</span>
         </div>
+        <nav>
+          <a href="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+            View Sales Dashboard
+          </a>
+        </nav>
       </header>
 
       {/* Workspace */}
