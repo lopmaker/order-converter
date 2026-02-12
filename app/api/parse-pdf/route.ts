@@ -6,6 +6,8 @@ import path from 'path';
 const workerPath = path.resolve(process.cwd(), 'node_modules/pdf-parse/dist/pdf-parse/cjs/pdf.worker.mjs');
 PDFParse.setWorker(workerPath);
 
+export const maxDuration = 60; // Max for Vercel Hobby plan
+
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();

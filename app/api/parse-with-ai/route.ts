@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+export const maxDuration = 60; // Max for Vercel Hobby plan
+
 const SYSTEM_PROMPT = `You are a purchase order data extraction assistant. You receive raw text extracted from a Vendor Purchase Order (VPO) PDF and must return a structured JSON object.
 
 The VPOs typically come from C-Life Group's ERP system. They are multi-page documents with repeated headers on each page. Extract the data from ALL pages and deduplicate.
