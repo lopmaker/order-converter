@@ -1,138 +1,29 @@
 'use client';
 
+import Link from "next/link";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { PdfUploader } from "@/components/pdf-viewer/pdf-uploader";
 import { OrderForm } from "@/components/order-form/order-form";
-import { ExtractedOrderData } from "@/lib/parser";
-import { FileList, OrderFile } from "@/components/sidebar/file-list";
+import { FileList } from "@/components/sidebar/file-list";
+import { useOrders } from "@/components/orders-provider";
 import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const [orders, setOrders] = useState<OrderFile[]>([]);
-  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const { orders, activeOrderId, setActiveOrderId, addOrders, removeOrder, updateOrder } = useOrders();
 
   // Resizable panel state
   const [leftWidth, setLeftWidth] = useState(20); // Sidebar width percentage
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
 
-  // --- Queue Processing Logic ---
-  useEffect(() => {
-    const processQueue = async () => {
-      // Find the first 'idle' order
-      const nextOrder = orders.find(o => o.status === 'idle');
-      if (!nextOrder) return;
-
-      // Mark as processing
-      setOrders(prev => prev.map(o => o.id === nextOrder.id ? { ...o, status: 'processing', processingStep: 'Extracting text...' } : o));
-
-      try {
-        // Step 0: Check File Size (Vercel limit 4.5MB)
-        if (nextOrder.file.size > 4.5 * 1024 * 1024) {
-          throw new Error(`File too large (${(nextOrder.file.size / 1024 / 1024).toFixed(2)}MB). Vercel limits uploads to 4.5MB.`);
-        }
-
-        // Step 1: Extract Text
-        const formData = new FormData();
-        formData.append('file', nextOrder.file);
-
-        const pdfResponse = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
-
-        let pdfResult;
-        if (!pdfResponse.ok) {
-          const errorText = await pdfResponse.text();
-          throw new Error(`PDF Extraction Failed (${pdfResponse.status}): ${errorText.slice(0, 100) || pdfResponse.statusText}`);
-        }
-
-        try {
-          pdfResult = await pdfResponse.json();
-        } catch (e: any) {
-          throw new Error(`Invalid JSON from PDF Parser: ${e.message}`);
-        }
-
-        if (!pdfResult.text?.trim()) {
-          throw new Error(pdfResult.error || 'Failed to extract text');
-        }
-
-        const extractedText = pdfResult.text;
-
-        // Update Step
-        setOrders(prev => prev.map(o => o.id === nextOrder.id ? { ...o, processingStep: 'AI analyzing...' } : o));
-
-        // Step 2: AI Parsing
-        const aiResponse = await fetch('/api/parse-with-ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: extractedText }),
-        });
-
-        let aiResult;
-        if (!aiResponse.ok) {
-          const errorText = await aiResponse.text();
-          throw new Error(`AI Analysis Failed (${aiResponse.status}): ${errorText.slice(0, 100) || aiResponse.statusText}`);
-        }
-
-        try {
-          aiResult = await aiResponse.json();
-        } catch (e: any) {
-          throw new Error(`Invalid JSON from AI: ${e.message}`);
-        }
-
-        if (!aiResult.success) {
-          throw new Error(aiResult.error || 'AI parsing failed');
-        }
-
-        // Success
-        setOrders(prev => prev.map(o => o.id === nextOrder.id ? {
-          ...o,
-          status: 'completed',
-          data: aiResult.data,
-          originalText: extractedText
-        } : o));
-
-      } catch (error: any) {
-        console.error("Processing error:", error);
-        setOrders(prev => prev.map(o => o.id === nextOrder.id ? {
-          ...o,
-          status: 'error',
-          error: error.message || 'Unknown error'
-        } : o));
-      }
-    };
-
-    // If we have an idle order and NOT explicitly paused (logic can be added), process it.
-    // We check if any order is currently 'processing' to do them sequentially
-    const isAnyProcessing = orders.some(o => o.status === 'processing');
-    if (!isAnyProcessing) {
-      processQueue();
-    }
-  }, [orders]);
-
   // --- Handlers ---
   const handleFilesSelect = (files: File[]) => {
-    const newOrders: OrderFile[] = files.map(file => ({
-      id: crypto.randomUUID(),
-      file,
-      status: 'idle'
-    }));
-
-    setOrders(prev => [...prev, ...newOrders]);
-    // If no active order, select the first new one
-    if (!activeOrderId && newOrders.length > 0) {
-      setActiveOrderId(newOrders[0].id);
-    }
+    addOrders(files);
   };
 
-  const handleRemoveOrder = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOrders(prev => {
-      const newOrders = prev.filter(o => o.id !== id);
-      // If we removed the active one, select the previous one or null
-      if (activeOrderId === id) {
-        setActiveOrderId(newOrders.length > 0 ? newOrders[0].id : null);
-      }
-      return newOrders;
-    });
+  const handleRemoveOrderWrapper = (id: string, e: React.MouseEvent) => {
+    removeOrder(id, e);
   };
 
   const activeOrder = orders.find(o => o.id === activeOrderId);
@@ -165,9 +56,11 @@ export default function Home() {
           <span>Order Converter AI</span>
         </div>
         <nav>
-          <a href="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-            View Sales Dashboard
-          </a>
+          <Button asChild variant="outline" size="lg" className="px-6">
+            <Link href="/dashboard">
+              View Sales Dashboard
+            </Link>
+          </Button>
         </nav>
       </header>
 
@@ -181,7 +74,7 @@ export default function Home() {
               orders={orders}
               activeOrderId={activeOrderId}
               onSelectOrder={setActiveOrderId}
-              onRemoveOrder={handleRemoveOrder}
+              onRemoveOrder={handleRemoveOrderWrapper}
               onAddMore={() => setActiveOrderId(null)}
             />
             {/* Drag Handle */}
@@ -210,13 +103,34 @@ export default function Home() {
                 {/* PDF Preview */}
                 <div className="w-[40%] h-full flex flex-col border-r bg-muted/20">
                   <div className="p-2 border-b text-xs flex justify-between bg-background">
-                    <span className="font-semibold truncate">{activeOrder.file.name}</span>
+                    <span className="font-semibold truncate">{activeOrder.fileName || activeOrder.file?.name || 'Unknown File'}</span>
                   </div>
-                  <iframe
-                    src={URL.createObjectURL(activeOrder.file)}
-                    className="w-full h-full border-0"
-                    title="PDF Preview"
-                  />
+                  {activeOrder.file ? (
+                    <iframe
+                      src={URL.createObjectURL(activeOrder.file)}
+                      className="w-full h-full border-0"
+                      title="PDF Preview"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center gap-3">
+                      <p className="font-medium">PDF Preview Unavailable</p>
+                      <p className="text-xs">The file was not persisted after reload.</p>
+                      <label className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                        Re-upload PDF
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file && activeOrder) {
+                              updateOrder(activeOrder.id, { file });
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 {/* Order Form */}

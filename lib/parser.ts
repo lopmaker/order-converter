@@ -5,6 +5,8 @@ export interface OrderItem {
     collection?: string;
     material?: string;
     color?: string;
+    customerUnitPrice?: number;
+    vendorUnitPrice?: number;
     unitPrice: number;
     totalQty: number;
     extension: number;

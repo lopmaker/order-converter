@@ -9,20 +9,29 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 // import { ScrollArea } from "@/components/ui/scroll-area"; // Removed to fix scrolling
 import { Badge } from "@/components/ui/badge";
 import {
-    FileText, Save, Send, Loader2, AlertCircle,
+    FileText, Save, Loader2, AlertCircle,
     ChevronDown, ChevronUp, Plus, Trash2, Sparkles,
     Package, Truck, Building2, CreditCard, Download, FileSpreadsheet, User
 } from "lucide-react";
-import { ExtractedOrderData, OrderItem } from "@/lib/parser";
-import { useEffect, useState } from "react";
+import { ExtractedOrderData } from "@/lib/parser";
+import { useEffect, useMemo, useState } from "react";
 import { PoPreviewDialog } from "@/components/po-preview/po-preview-dialog";
-import * as XLSX from 'xlsx';
+import { deriveTariffKey, inferOriginCountry, normalizeTariffKey, resolveTariffRate } from "@/lib/tariffs";
+import { BUYER_OPTIONS, PAYMENT_TERMS } from "@/lib/constants";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -40,21 +49,14 @@ interface OrderFormProps {
     error?: string;
 }
 
-const BUYER_OPTIONS = {
-    NY: {
-        name: "Mijenro International LLC",
-        address: "10740 Queens Blvd\nForest Hills, NY 11375"
-    },
-    HK: {
-        name: "Mijenro Hongkong Ltd",
-        address: "Room 704, 7/F., Tower A, New Mandarin Plaza, 14 Science Museum Road, TST East, Kowloon, Hong Kong"
-    }
-};
+interface TariffRow {
+    id: string;
+    tariffKey?: string;
+    productClass: string;
+    tariffRate: number;
+}
 
-const PAYMENT_TERMS = [
-    "Net 60 days",
-    "Net 90 days"
-];
+
 
 export function OrderForm({ data, isLoading, processingStep, rawText, error }: OrderFormProps) {
     // Data Refinement Logic on Init
@@ -90,6 +92,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const [isPoPreviewOpen, setIsPoPreviewOpen] = useState(false);
     const [showRawText, setShowRawText] = useState(false);
     const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+    const [tariffByKey, setTariffByKey] = useState<Record<string, number>>({});
 
     // Update form when new data is loaded
     useEffect(() => {
@@ -97,6 +100,27 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             setFormData(initializeData(data));
         }
     }, [data]);
+
+    useEffect(() => {
+        const loadTariffs = async () => {
+            try {
+                const res = await fetch('/api/tariffs', { cache: 'no-store' });
+                if (!res.ok) return;
+                const payload = await res.json();
+                if (!payload?.success || !Array.isArray(payload.data)) return;
+                const map = (payload.data as TariffRow[]).reduce<Record<string, number>>((acc, row) => {
+                    const key = normalizeTariffKey((row.tariffKey || row.productClass || '').trim());
+                    if (!key) return acc;
+                    acc[key] = Number(row.tariffRate || 0);
+                    return acc;
+                }, {});
+                setTariffByKey(map);
+            } catch {
+                // keep fallback defaults in UI
+            }
+        };
+        loadTariffs();
+    }, []);
 
     // Auto-switch Buyer based on Supplier
     useEffect(() => {
@@ -142,7 +166,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         }
     }, [formData.supplierName]);
 
-    const updateField = (field: keyof ExtractedOrderData, value: any) => {
+    const updateField = (field: keyof ExtractedOrderData, value: ExtractedOrderData[keyof ExtractedOrderData]) => {
         setFormData({ ...formData, [field]: value });
     };
 
@@ -152,7 +176,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             items: [...formData.items, {
                 productCode: '', description: '', productClass: '',
                 collection: '', material: '', color: '',
-                unitPrice: 0, totalQty: 0, extension: 0,
+                unitPrice: 0, customerUnitPrice: 0, vendorUnitPrice: 0, totalQty: 0, extension: 0,
             }]
         });
     };
@@ -168,12 +192,62 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
     const updateItem = (index: number, field: string, value: string | number) => {
         const newItems = [...formData.items];
-        newItems[index] = { ...newItems[index], [field]: value };
+        if (field === 'unitPrice') {
+            newItems[index] = {
+                ...newItems[index],
+                unitPrice: Number(value),
+                customerUnitPrice: Number(value),
+            };
+        } else if (field === 'customerUnitPrice') {
+            newItems[index] = {
+                ...newItems[index],
+                unitPrice: Number(value),
+                customerUnitPrice: Number(value),
+            };
+        } else {
+            newItems[index] = { ...newItems[index], [field]: value };
+        }
         // Auto-calc extension
-        if (field === 'unitPrice' || field === 'totalQty') {
+        if (field === 'unitPrice' || field === 'customerUnitPrice' || field === 'totalQty') {
             newItems[index].extension = Number(newItems[index].unitPrice) * Number(newItems[index].totalQty);
         }
         setFormData({ ...formData, items: newItems });
+    };
+
+    const tariffRateMap = useMemo(() => {
+        return new Map<string, number>(
+            Object.entries(tariffByKey).map(([key, rate]) => [normalizeTariffKey(key), Number(rate || 0)])
+        );
+    }, [tariffByKey]);
+
+    const getTariffContext = (item: ExtractedOrderData['items'][number]) => {
+        const baseTariffKey = deriveTariffKey({
+            description: item.description,
+            collection: item.collection,
+            material: item.material,
+        });
+        const originCountry = inferOriginCountry(formData.supplierName, formData.supplierAddress);
+        const tariffRate = resolveTariffRate({
+            baseTariffKey,
+            originCountry,
+            tariffMap: tariffRateMap,
+        }).rate;
+
+        return { tariffRate, baseTariffKey, originCountry };
+    };
+
+    const getEstimate = (item: ExtractedOrderData['items'][number]) => {
+        const qty = Number(item.totalQty || 0);
+        const customerUnitPrice = Number(item.customerUnitPrice ?? item.unitPrice ?? 0);
+        const vendorUnitPrice = Number(item.vendorUnitPrice || 0);
+        const { tariffRate, baseTariffKey, originCountry } = getTariffContext(item);
+        const revenue = customerUnitPrice * qty;
+        const vendorCost = vendorUnitPrice * qty;
+        const duty = vendorCost * tariffRate;
+        const est3pl = vendorCost * tariffRate * 0.5 + 0.1 * qty;
+        const margin = revenue - vendorCost - duty - est3pl;
+        const marginRate = revenue > 0 ? margin / revenue : 0;
+        return { tariffRate, baseTariffKey, originCountry, revenue, vendorCost, duty, est3pl, margin, marginRate };
     };
 
     const toggleItemExpand = (index: number) => {
@@ -198,13 +272,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             .substring(0, 3) || 'XX';
     };
 
-    const getSafeFilename = (prefix: string, ext: string) => {
+    type PriceMode = 'customer' | 'vendor';
+
+    const getSafeFilename = (ext: string, mode: PriceMode = 'customer') => {
         const safeVpo = (formData.vpoNumber || 'draft').replace(/[^a-z0-9-_]/gi, '_');
         const supplierInitials = getSupplierInitials(formData.supplierName);
-        // Format: PO-{vpo}-{initials}.{ext}
-        // Note: User requested 'PO' prefix explicitly, replacing generic 'order' prefix logic if needed, 
-        // but function accepts prefix. We will pass 'PO' when calling this.
-        return `PO-${safeVpo}-${supplierInitials}.${ext}`;
+        return mode === 'vendor'
+            ? `VENDOR-PO-${safeVpo}-${supplierInitials}.${ext}`
+            : `PO-${safeVpo}-${supplierInitials}.${ext}`;
     };
 
     const handleSaveJson = () => {
@@ -212,17 +287,26 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = getSafeFilename('PO', 'json');
+        a.download = getSafeFilename('json');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
 
-    const handleDownloadExcel = async () => {
+    const getExportUnitPrice = (item: ExtractedOrderData['items'][number], mode: PriceMode) => {
+        if (mode === 'vendor') return Number(item.vendorUnitPrice || 0);
+        return Number(item.customerUnitPrice ?? item.unitPrice ?? 0);
+    };
+
+    const getExportLineTotal = (item: ExtractedOrderData['items'][number], mode: PriceMode) => {
+        return getExportUnitPrice(item, mode) * Number(item.totalQty || 0);
+    };
+
+    const handleDownloadExcel = async (mode: PriceMode = 'customer') => {
         const Workbook = (await import('exceljs')).default.Workbook;
         const workbook = new Workbook();
-        const worksheet = workbook.addWorksheet('Purchase Order');
+        const worksheet = workbook.addWorksheet(mode === 'vendor' ? 'Vendor PO' : 'Purchase Order');
 
         // Layout setup - Wider columns
         worksheet.columns = [
@@ -246,7 +330,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         // Title
         worksheet.mergeCells('A1:G1');
         const titleCell = worksheet.getCell('A1');
-        titleCell.value = 'PURCHASE ORDER';
+        titleCell.value = mode === 'vendor' ? 'VENDOR PURCHASE ORDER' : 'PURCHASE ORDER';
         titleCell.font = { size: 20, bold: true };
         titleCell.alignment = alignCenter;
         worksheet.addRow([]);
@@ -342,7 +426,6 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
         // Items Table Header
         const headerRow = worksheet.addRow(['Product Code', 'Description', 'Color', 'Material', 'Qty', 'Unit Price', 'Total']);
-        const headerRowNumber = headerRow.number; // Prepare for formulas
         let firstItemRowNumber = -1;
         let lastItemRowNumber = -1;
         headerRow.font = boldFont;
@@ -356,14 +439,16 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
         // Items
         formData.items.forEach(item => {
+            const lineUnitPrice = getExportUnitPrice(item, mode);
+            const lineTotal = getExportLineTotal(item, mode);
             const row = worksheet.addRow([
                 item.productCode,
                 item.description,
                 item.color,
                 item.material,
                 item.totalQty,
-                item.unitPrice,
-                item.extension // Placeholder, will update with formula
+                lineUnitPrice,
+                lineTotal // Placeholder, will update with formula
             ]);
 
             // Track item rows for SUM formula
@@ -374,7 +459,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             // E is 5th, F is 6th, G is 7th
             row.getCell(7).value = {
                 formula: `E${row.number}*F${row.number}`,
-                result: item.extension
+                result: lineTotal
             };
 
             row.getCell(2).alignment = wrapText; // Wrap Description
@@ -395,7 +480,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         // Totals
         worksheet.addRow([]);
         const totalQty = formData.items.reduce((sum, item) => sum + (item.totalQty || 0), 0);
-        const totalAmount = formData.items.reduce((sum, item) => sum + (item.extension || 0), 0);
+        const totalAmount = formData.items.reduce((sum, item) => sum + getExportLineTotal(item, mode), 0);
 
         const totalRow = worksheet.addRow(['', '', '', 'TOTAL', totalQty, '', totalAmount]);
 
@@ -436,14 +521,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = getSafeFilename('PO', 'xlsx');
+        a.download = getSafeFilename('xlsx', mode);
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     };
 
-    const handleDownloadPdf = async () => {
+    const handleDownloadPdf = async (mode: PriceMode = 'customer') => {
         try {
             const jsPDF = (await import('jspdf')).default;
             const autoTable = (await import('jspdf-autotable')).default;
@@ -453,7 +538,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             // 1. Title
             doc.setFontSize(20);
             doc.setFont('helvetica', 'bold');
-            doc.text("PURCHASE ORDER", 105, 20, { align: "center" });
+            doc.text(mode === 'vendor' ? "VENDOR PURCHASE ORDER" : "PURCHASE ORDER", 105, 20, { align: "center" });
 
             // 2. Header Info (Order #, Date, etc)
             doc.setFontSize(10);
@@ -507,17 +592,32 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
             // 5. Items Table using autoTable
             const tableColumn = ["Product Code", "Description", "Color", "Material", "Qty", "Unit Price", "Total"];
-            const tableRows: any[] = [];
+            type PdfTableCell =
+                | string
+                | number
+                | {
+                    content: string | number;
+                    colSpan?: number;
+                    styles?: {
+                        fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic';
+                        textColor?: [number, number, number];
+                        halign?: 'left' | 'center' | 'right';
+                    };
+                };
+            type PdfTableRow = PdfTableCell[];
+            const tableRows: PdfTableRow[] = [];
 
             formData.items.forEach(item => {
+                const lineUnitPrice = getExportUnitPrice(item, mode);
+                const lineTotal = getExportLineTotal(item, mode);
                 const rowData = [
-                    item.productCode,
-                    item.description,
-                    item.color,
-                    item.material,
+                    item.productCode || '',
+                    item.description || '',
+                    item.color || '',
+                    item.material || '',
                     item.totalQty,
-                    `$${Number(item.unitPrice).toFixed(2)}`,
-                    `$${Number(item.extension).toFixed(2)}`
+                    `$${lineUnitPrice.toFixed(2)}`,
+                    `$${lineTotal.toFixed(2)}`
                 ];
                 tableRows.push(rowData);
 
@@ -531,7 +631,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
             // Totals Row
             const totalQty = formData.items.reduce((sum, item) => sum + (item.totalQty || 0), 0);
-            const totalAmount = formData.items.reduce((sum, item) => sum + (item.extension || 0), 0);
+            const totalAmount = formData.items.reduce((sum, item) => sum + getExportLineTotal(item, mode), 0);
 
             tableRows.push([
                 "", "", "", "TOTAL",
@@ -547,6 +647,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 theme: 'grid',
                 headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [200, 200, 200] },
                 styles: { fontSize: 9, cellPadding: 2, lineColor: [200, 200, 200], overflow: 'linebreak' }, // Enable wrapping
+                margin: { bottom: 40 }, // Reserve space for legal text footer
                 columnStyles: {
                     0: { cellWidth: 18 }, // Product Code
                     1: { cellWidth: 'auto' }, // Description
@@ -558,11 +659,12 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 }
             });
 
-            // 5.5 Legal Lines (Footer of Page 1)
+            // 5.5 Legal Lines (Flowing after table)
             const pageHeight = doc.internal.pageSize.height;
             doc.setFontSize(7);
             doc.setFont('helvetica', 'italic');
             doc.setTextColor(100, 100, 100);
+
             const legalLines = [
                 "Terms & Conditions: 1. Acceptance of this Purchase Order (PO) constitutes a binding contract subject to Buyer's standard terms. 2. Time is of the essence; Buyer reserves the right to cancel or apply penalties for late deliveries.",
                 "3. Goods must strictly conform to specifications, quality standards, and all applicable safety laws. 4. Buyer reserves the right to inspect and reject non-conforming goods at Seller's expense.",
@@ -570,7 +672,19 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 "7. WARNING- To ensure compliance with U.S. and other laws, all products supplied to or on behalf of buyer anywhere in the world must not include any labor, materials or components originating from, or produced in, Uzbekistan, Turkmenistan, Or China XUAR Xinjiang Province, or otherwise involving any party on a U.S. government’s XUAR-related entities list. Products will be randomly tested for component origin. Non-compliance will result in the immediate cancellation of orders and a penalty equal to no less than two times the contracted value of the products."
             ];
             const splitLegal = doc.splitTextToSize(legalLines.join(' '), 180);
-            doc.text(splitLegal, 14, pageHeight - 35);
+
+            // Determine Y position
+            const docWithAutoTable = doc as typeof doc & { lastAutoTable?: { finalY: number } };
+            let legalY = (docWithAutoTable.lastAutoTable?.finalY ?? yPos) + 10;
+            const textHeight = splitLegal.length * 3; // Approx 3mm per line (font size 7)
+
+            // Check if we need a new page
+            if (legalY + textHeight > pageHeight - 10) {
+                doc.addPage();
+                legalY = 20; // Start at top of new page
+            }
+
+            doc.text(splitLegal, 14, legalY);
 
             // 6. Customer Notes (Page 2)
             if (formData.customerNotes) {
@@ -586,16 +700,24 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             }
 
             // Save PDF
-            doc.save(getSafeFilename('PO', 'pdf'));
+            doc.save(getSafeFilename('pdf', mode));
 
-        } catch (error) {
+        } catch (error: unknown) {
             console.error("PDF Export failed", error);
-            alert("Failed to export PDF.");
+            setAlertConfig({ open: true, title: "Export Failed", message: "Failed to export PDF.", isError: true });
         }
     };
 
     const totalQty = formData.items.reduce((sum, item) => sum + (item.totalQty || 0), 0);
-    const totalAmount = formData.items.reduce((sum, item) => sum + (item.extension || 0), 0);
+    const totalAmount = formData.items.reduce((sum, item) => sum + Number(item.customerUnitPrice ?? item.unitPrice ?? 0) * Number(item.totalQty || 0), 0);
+    const totalEstimatedMargin = formData.items.reduce((sum, item) => sum + getEstimate(item).margin, 0);
+    const totalEstimatedMarginRate = totalAmount > 0 ? totalEstimatedMargin / totalAmount : 0;
+
+    // UI State for "Popups"
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{ open: boolean; title: string; message: string; isError?: boolean }>({
+        open: false, title: '', message: ''
+    });
 
     return (
         <div className="h-full flex flex-col">
@@ -621,7 +743,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm" disabled={!data && formData.items.length === 0}>
                                 <Save className="h-4 w-4 mr-2" />
@@ -631,18 +753,48 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Export Options</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={async () => {
+                            <DropdownMenuItem onClick={async (e) => {
+                                e.preventDefault(); // Prevent menu from closing immediately if needed, though usually fine
                                 try {
+                                    // Use raw data for DB if available to preserve original PDF info
+                                    // but keep item edits from formData as those are likely corrections
+                                    const dbPayload = {
+                                        ...formData,
+                                        vpoNumber: data?.vpoNumber || formData.vpoNumber,
+                                        customerName: data?.customerName || formData.customerName,
+                                        customerAddress: data?.customerAddress || formData.customerAddress,
+                                        shipmentTerms: data?.shipmentTerms || formData.shipmentTerms,
+                                        paymentTerms: data?.paymentTerms || formData.paymentTerms,
+                                        items: formData.items
+                                    };
+
                                     const res = await fetch('/api/save-order', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(formData)
+                                        body: JSON.stringify(dbPayload)
                                     });
-                                    if (!res.ok) throw new Error('Failed to save');
-                                    alert('Order saved to Dashboard!');
-                                } catch (e) {
-                                    alert('Failed to save order. Make sure database is connected.');
-                                    console.error(e);
+
+                                    if (!res.ok) {
+                                        const errData = await res.json().catch(() => ({}));
+                                        throw new Error(errData.error || 'Failed to save');
+                                    }
+
+                                    setAlertConfig({
+                                        open: true,
+                                        title: "Success",
+                                        message: "Order saved to Dashboard!",
+                                        isError: false
+                                    });
+                                    setIsMenuOpen(false); // Close menu on success
+                                } catch (e: unknown) {
+                                    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+                                    setAlertConfig({
+                                        open: true,
+                                        title: "Save Failed",
+                                        message: `Failed to save order: ${errorMessage}`,
+                                        isError: true
+                                    });
+                                    console.error("Save Error:", e);
                                 }
                             }}>
                                 <Save className="h-4 w-4 mr-2" />
@@ -653,13 +805,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 <Download className="h-4 w-4 mr-2" />
                                 Save as JSON
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleDownloadExcel}>
+                            <DropdownMenuItem onClick={() => handleDownloadExcel('vendor')}>
                                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                                Export to Excel
+                                Export Vendor PO (Excel FOB)
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleDownloadPdf}>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDownloadPdf('vendor')}>
                                 <FileText className="h-4 w-4 mr-2" />
-                                Export to PDF
+                                Export Vendor PO (PDF FOB)
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -896,7 +1049,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 </h3>
                                 {formData.items.length > 0 && (
                                     <Badge variant="secondary" className="text-xs">
-                                        {formData.items.length} items · {totalQty} pcs · ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        {formData.items.length} items · {totalQty} pcs · Sales ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Est. Margin ${totalEstimatedMargin.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                                     </Badge>
                                 )}
                             </div>
@@ -919,7 +1072,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 {formData.items.map((item, idx) => (
                                     <div key={idx} className="border rounded-lg overflow-hidden">
                                         {/* Item Header Row */}
-                                        <div className="grid grid-cols-[1fr_1.5fr_80px_80px_100px_36px] gap-2 p-3 bg-muted/20 items-center text-sm">
+                                        <div className="grid grid-cols-[1fr_1.4fr_70px_90px_90px_110px_36px] gap-2 p-3 bg-muted/20 items-center text-sm">
                                             <Input
                                                 className="h-8 text-xs font-mono"
                                                 placeholder="Product Code"
@@ -943,12 +1096,23 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                                 type="number"
                                                 step="0.01"
                                                 className="h-8 text-xs text-right"
-                                                placeholder="Price"
-                                                value={item.unitPrice || ''}
-                                                onChange={(e) => updateItem(idx, 'unitPrice', Number(e.target.value))}
+                                                placeholder="Cust $"
+                                                value={(item.customerUnitPrice ?? item.unitPrice) || ''}
+                                                onChange={(e) => updateItem(idx, 'customerUnitPrice', Number(e.target.value))}
+                                            />
+                                            <Input
+                                                type="number"
+                                                step="0.01"
+                                                className="h-8 text-xs text-right"
+                                                placeholder="Vendor $"
+                                                value={item.vendorUnitPrice || ''}
+                                                onChange={(e) => updateItem(idx, 'vendorUnitPrice', Number(e.target.value))}
                                             />
                                             <div className="text-xs text-right font-medium pr-1">
-                                                ${(item.extension || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                {(() => {
+                                                    const estimate = getEstimate(item);
+                                                    return `$${estimate.margin.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                                                })()}
                                             </div>
                                             <div className="flex gap-0.5">
                                                 <Button
@@ -975,14 +1139,35 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                                         <Input className="h-7 text-xs" value={item.collection || ''} onChange={(e) => updateItem(idx, 'collection', e.target.value)} />
                                                     </div>
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs text-muted-foreground">Class</Label>
-                                                        <Input className="h-7 text-xs" value={item.productClass || ''} onChange={(e) => updateItem(idx, 'productClass', e.target.value)} />
+                                                        <Label className="text-xs text-muted-foreground">Tariff Key (Auto)</Label>
+                                                        <div className="h-7 rounded-md border bg-muted/30 px-2 text-xs flex items-center truncate">
+                                                            {getEstimate(item).baseTariffKey}
+                                                        </div>
                                                     </div>
                                                     <div className="space-y-1">
                                                         <Label className="text-xs text-muted-foreground">Material</Label>
                                                         <Input className="h-7 text-xs" value={item.material || ''} onChange={(e) => updateItem(idx, 'material', e.target.value)} />
                                                     </div>
                                                 </div>
+
+                                                {(() => {
+                                                    const estimate = getEstimate(item);
+                                                    return (
+                                                        <div className="text-xs rounded-md border bg-muted/20 px-3 py-2 grid sm:grid-cols-6 gap-2">
+                                                            <div className="sm:col-span-2 truncate" title={estimate.baseTariffKey}>
+                                                                Key: {estimate.baseTariffKey}
+                                                            </div>
+                                                            <div>Origin: {estimate.originCountry}</div>
+                                                            <div>Tariff: {(estimate.tariffRate * 100).toFixed(2)}%</div>
+                                                            <div>Revenue: ${estimate.revenue.toFixed(2)}</div>
+                                                            <div>Duty: ${estimate.duty.toFixed(2)}</div>
+                                                            <div>Est. 3PL: ${estimate.est3pl.toFixed(2)}</div>
+                                                            <div className={estimate.margin >= 0 ? 'text-emerald-600' : 'text-destructive'}>
+                                                                Margin: ${estimate.margin.toFixed(2)} ({(estimate.marginRate * 100).toFixed(1)}%)
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 {/* Size Breakdown */}
                                                 {item.sizeBreakdown && Object.keys(item.sizeBreakdown).length > 0 && (
@@ -1022,8 +1207,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                         <span className="font-semibold">{totalQty.toLocaleString()}</span>
                                     </div>
                                     <div>
-                                        <span className="text-muted-foreground">Total:</span>{' '}
+                                        <span className="text-muted-foreground">Sales:</span>{' '}
                                         <span className="font-semibold">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Est. Margin:</span>{' '}
+                                        <span className={totalEstimatedMargin >= 0 ? 'font-semibold text-emerald-600' : 'font-semibold text-destructive'}>
+                                            ${totalEstimatedMargin.toLocaleString('en-US', { minimumFractionDigits: 2 })} ({(totalEstimatedMarginRate * 100).toFixed(1)}%)
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -1051,6 +1242,25 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 onOpenChange={setIsPoPreviewOpen}
                 data={formData}
             />
+
+            {/* General Alert Dialog */}
+            <Dialog open={alertConfig.open} onOpenChange={(open) => setAlertConfig(prev => ({ ...prev, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className={alertConfig.isError ? "text-destructive" : ""}>
+                            {alertConfig.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {alertConfig.message}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => setAlertConfig(prev => ({ ...prev, open: false }))}>
+                            Close
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

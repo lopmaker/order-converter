@@ -3,15 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export interface OrderFile {
-    id: string;
-    file: File;
-    status: 'idle' | 'processing' | 'completed' | 'error';
-    data?: any;
-    error?: string;
-    processingStep?: string;
-    originalText?: string;
-}
+import { OrderFile } from "@/lib/types";
 
 interface FileListProps {
     orders: OrderFile[];
@@ -53,7 +45,7 @@ export function FileList({ orders, activeOrderId, onSelectOrder, onRemoveOrder, 
 
                             {/* Filename */}
                             <div className="flex-1 min-w-0">
-                                <p className="truncate">{order.file.name}</p>
+                                <p className="truncate">{order.fileName || order.file?.name || 'Unknown File'}</p>
                                 {order.status === 'processing' && (
                                     <p className="text-[10px] opacity-70 truncate">{order.processingStep || 'Processing...'}</p>
                                 )}

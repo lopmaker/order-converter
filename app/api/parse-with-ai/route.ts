@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getErrorMessage } from '@/lib/api-helpers';
 
 export const maxDuration = 60; // Max for Vercel Hobby plan
 
@@ -54,101 +55,102 @@ IMPORTANT RULES:
    - Preserve original formatting and newlines for the included parts.`;
 
 export async function POST(req: NextRequest) {
-    try {
-        const apiKey = process.env.GOOGLE_API_KEY;
-        if (!apiKey || apiKey === 'YOUR_GOOGLE_API_KEY_HERE') {
-            return NextResponse.json(
-                { error: 'Google API Key not configured. Please set GOOGLE_API_KEY in .env.local' },
-                { status: 500 }
-            );
-        }
-
-        const body = await req.json();
-        const { text } = body;
-
-        if (!text || typeof text !== 'string') {
-            return NextResponse.json(
-                { error: 'No text provided for AI parsing' },
-                { status: 400 }
-            );
-        }
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-
-        // Model fallback strategy: Using latest model names
-        // Strictly using 2.5 and 3.0 series per user instruction.
-        const MODELS = ['gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'];
-        let result;
-        let lastError;
-
-        for (const modelName of MODELS) {
-            try {
-                // simple retry logic per model
-                let retries = 2; // 2 retries per model
-                let delay = 1000;
-                const model = genAI.getGenerativeModel({ model: modelName });
-
-                while (retries >= 0) {
-                    try {
-                        console.log(`Attempting with model: ${modelName}`);
-                        result = await model.generateContent([SYSTEM_PROMPT, `Here is the raw text extracted from a VPO PDF. Parse it and return the structured JSON:\n\n${text}`]);
-                        break; // Success
-                    } catch (error: any) {
-                        if (error.response?.status === 429 || error.message?.includes('429')) {
-                            if (retries === 0) throw error;
-                            console.log(`Gemini API 429 hit on ${modelName}. Retrying in ${delay}ms...`);
-                            await new Promise(resolve => setTimeout(resolve, delay));
-                            delay *= 2;
-                            retries--;
-                        } else {
-                            throw error; // Fatal error for this model attempt
-                        }
-                    }
-                }
-
-                if (result) break; // If successful, stop trying other models
-
-            } catch (error: any) {
-                console.warn(`Model ${modelName} failed:`, error.message);
-                lastError = error;
-                // Continue to next model
-            }
-        }
-
-        if (!result) {
-            console.error("All models failed. Last error:", lastError);
-            throw lastError || new Error('Failed to get response from Gemini API after trying all models');
-        }
-
-        const response = result.response;
-        const responseText = response.text();
-
-        // Try to parse the JSON from the response
-        let parsed;
-        try {
-            // Remove potential markdown code fences
-            const cleaned = responseText
-                .replace(/```json\n?/g, '')
-                .replace(/```\n?/g, '')
-                .trim();
-            parsed = JSON.parse(cleaned);
-        } catch (parseError) {
-            console.error('Failed to parse AI response as JSON:', responseText);
-            return NextResponse.json(
-                { error: 'AI returned invalid JSON. Raw response saved.', rawResponse: responseText },
-                { status: 422 }
-            );
-        }
-
-        return NextResponse.json({
-            success: true,
-            data: parsed,
-        });
-    } catch (error: any) {
-        console.error('AI Parse Error:', error);
-        return NextResponse.json(
-            { error: `AI parsing failed: ${error?.message || 'Unknown error'}` },
-            { status: 500 }
-        );
+  try {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_API_KEY_HERE') {
+      return NextResponse.json(
+        { error: 'Google API Key not configured. Please set GOOGLE_API_KEY in .env.local' },
+        { status: 500 }
+      );
     }
+
+    const body = (await req.json()) as { text?: unknown };
+    const { text } = body;
+
+    if (!text || typeof text !== 'string') {
+      return NextResponse.json(
+        { error: 'No text provided for AI parsing' },
+        { status: 400 }
+      );
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // Model fallback strategy: Using latest model names
+    // Strictly using 2.5 and 3.0 series per user instruction.
+    const MODELS = ['gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+    let result: { response: { text: () => string } } | null = null;
+    let lastError: unknown;
+
+    for (const modelName of MODELS) {
+      try {
+        let retries = 2;
+        let delay = 1000;
+        const model = genAI.getGenerativeModel({ model: modelName });
+
+        while (retries >= 0) {
+          try {
+            result = await model.generateContent([
+              SYSTEM_PROMPT,
+              `Here is the raw text extracted from a VPO PDF. Parse it and return the structured JSON:\n\n${text}`,
+            ]);
+            break;
+          } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            const status =
+              typeof error === 'object' && error !== null && 'response' in error
+                ? (error as { response?: { status?: number } }).response?.status
+                : undefined;
+
+            if (status === 429 || message.includes('429')) {
+              if (retries === 0) throw error;
+              await new Promise((resolve) => setTimeout(resolve, delay));
+              delay *= 2;
+              retries--;
+            } else {
+              throw error;
+            }
+          }
+        }
+
+        if (result) break;
+      } catch (error: unknown) {
+        console.warn(`Model ${modelName} failed:`, getErrorMessage(error));
+        lastError = error;
+      }
+    }
+
+    if (!result) {
+      console.error('All models failed. Last error:', lastError);
+      throw lastError ?? new Error('Failed to get response from Gemini API after trying all models');
+    }
+
+    const responseText = result.response.text();
+
+    let parsed: unknown;
+    try {
+      const cleaned = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      console.error('Failed to parse AI response as JSON:', responseText);
+      return NextResponse.json(
+        { error: 'AI returned invalid JSON. Raw response saved.', rawResponse: responseText },
+        { status: 422 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: parsed,
+    });
+  } catch (error: unknown) {
+    console.error('AI Parse Error:', error);
+    return NextResponse.json(
+      { error: `AI parsing failed: ${getErrorMessage(error)}` },
+      { status: 500 }
+    );
+  }
 }
