@@ -81,6 +81,18 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
     const refined = { ...inputData };
 
+    // 0. Sanitize numeric fields — AI may return them as strings (e.g. "2.75")
+    if (refined.items) {
+      refined.items = refined.items.map((item) => ({
+        ...item,
+        unitPrice: Number(String(item.unitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+        customerUnitPrice: Number(String(item.customerUnitPrice ?? item.unitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+        vendorUnitPrice: Number(String(item.vendorUnitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+        totalQty: Number(String(item.totalQty ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+        extension: Number(String(item.extension ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+      }));
+    }
+
     // 1. VPO Number: Strip "VPO" and Append "M"
     if (refined.vpoNumber) {
       // Remove "VPO" prefix/text (case-insensitive) and hyphens/spaces
@@ -669,14 +681,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         | string
         | number
         | {
-            content: string | number;
-            colSpan?: number;
-            styles?: {
-              fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic';
-              textColor?: [number, number, number];
-              halign?: 'left' | 'center' | 'right';
-            };
+          content: string | number;
+          colSpan?: number;
+          styles?: {
+            fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic';
+            textColor?: [number, number, number];
+            halign?: 'left' | 'center' | 'right';
           };
+        };
       type PdfTableRow = PdfTableCell[];
       const tableRows: PdfTableRow[] = [];
 

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // Model fallback strategy: Using latest model names
     // Strictly using 2.5 and 3.0 series per user instruction.
-    const MODELS = ['gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+    const MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
     let result: { response: { text: () => string } } | null = null;
     let lastError: unknown;
 
