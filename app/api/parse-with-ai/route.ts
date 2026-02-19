@@ -34,9 +34,9 @@ Return ONLY valid JSON with this exact structure (no markdown, no code fences, j
       "collection": "string - e.g. Junior, Kids Mix",
       "material": "string - fabric composition",
       "color": "string - color name",
-      "unitPrice": number,
+      "unitPrice": "string - unit price (e.g. '2.75')",
       "totalQty": number,
-      "extension": number,
+      "extension": "string - total value (e.g. '16,533.00')",
       "sizeBreakdown": {"size_label": quantity} 
     }
   ]
@@ -47,7 +47,7 @@ IMPORTANT RULES:
 2. For assortment items (marked with *Assortment Detail), these are sub-items of a parent product. List each sub-item separately with the parent's price info.
 3. Size breakdown should map size labels (XS, S, M, L, XL, 2XL, 3XL, 2T, 3T, 4T, 5, 6, 7, etc.) to their quantities.
 4. If a field is not found, use null for strings and 0 for numbers.
-5. Prices are typically per unit ("Ea").
+5. Prices (unitPrice, extension) MUST be strings. Remove currency symbols ($) but keep commas and decimals if present.
 7. The "extension" is usually unitPrice × totalQty.
 8. **IMPORTANT**: Capture the 'Notes:' or 'Special Instructions' section into 'customerNotes'. 
    - **EXCLUDE**: Standard legal disclaimers, forced labor warnings (e.g., Uzbekistan, Turkmenistan, XUAR), or "contracting terms" that are normally part of the generic PO footer.
