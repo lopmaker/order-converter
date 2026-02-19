@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { PDFParse } from 'pdf-parse';
 import { getErrorMessage } from '@/lib/api-helpers';
+import { pdfParseRateLimiter } from '@/lib/rate-limiter'; // Import the rate limiter
 
 let parserInitPromise: Promise<void> | null = null;
 
@@ -55,6 +56,27 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  // Get client IP for rate limiting
+  const ip = (req as any).ip || req.headers.get('x-forwarded-for') || 'anonymous';
+
+  // Check rate limit
+  if (!pdfParseRateLimiter.check(ip)) {
+    const retryAfter = pdfParseRateLimiter.getResetTime(ip);
+    return new NextResponse(JSON.stringify({
+      error: `Too many requests. Please try again after ${retryAfter} seconds.`,
+      retryAfter: retryAfter,
+    }), {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': pdfParseRateLimiter['options'].maxRequests.toString(),
+        'X-RateLimit-Remaining': pdfParseRateLimiter.getRemaining(ip).toString(),
+        'X-RateLimit-Reset': retryAfter.toString(),
+        'Retry-After': retryAfter.toString(),
+      },
+    });
+  }
+
   try {
     await initParserRuntime();
 

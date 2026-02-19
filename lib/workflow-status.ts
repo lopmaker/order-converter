@@ -23,11 +23,26 @@ export async function recomputeOrderWorkflowStatus(orderId: string) {
 
   const [shippingDocRows, allocationRows, invoiceRows, vendorBillRows, logisticsBillRows] =
     await Promise.all([
-      db.select({ id: shippingDocuments.id }).from(shippingDocuments).where(eq(shippingDocuments.orderId, orderId)),
-      db.select({ id: containerAllocations.id }).from(containerAllocations).where(eq(containerAllocations.orderId, orderId)),
-      db.select({ status: commercialInvoices.status }).from(commercialInvoices).where(eq(commercialInvoices.orderId, orderId)),
-      db.select({ status: vendorBills.status }).from(vendorBills).where(eq(vendorBills.orderId, orderId)),
-      db.select({ status: logisticsBills.status }).from(logisticsBills).where(eq(logisticsBills.orderId, orderId)),
+      db
+        .select({ id: shippingDocuments.id })
+        .from(shippingDocuments)
+        .where(eq(shippingDocuments.orderId, orderId)),
+      db
+        .select({ id: containerAllocations.id })
+        .from(containerAllocations)
+        .where(eq(containerAllocations.orderId, orderId)),
+      db
+        .select({ status: commercialInvoices.status })
+        .from(commercialInvoices)
+        .where(eq(commercialInvoices.orderId, orderId)),
+      db
+        .select({ status: vendorBills.status })
+        .from(vendorBills)
+        .where(eq(vendorBills.orderId, orderId)),
+      db
+        .select({ status: logisticsBills.status })
+        .from(logisticsBills)
+        .where(eq(logisticsBills.orderId, orderId)),
     ]);
 
   const hasShippingDocs = shippingDocRows.length > 0;
@@ -40,8 +55,7 @@ export async function recomputeOrderWorkflowStatus(orderId: string) {
     normalizeStatus(row.status)
   );
   const hasFinanceDocs = financeStatuses.length > 0;
-  const allFinancePaid =
-    hasFinanceDocs && financeStatuses.every((status) => status === 'PAID');
+  const allFinancePaid = hasFinanceDocs && financeStatuses.every((status) => status === 'PAID');
 
   let nextWorkflowStatus: string;
   let nextClosedAt: Date | null = null;

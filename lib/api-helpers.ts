@@ -5,7 +5,7 @@
 
 /** Safely extract a human-readable message from an unknown thrown value. */
 export function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : 'Unknown error';
+  return error instanceof Error ? error.message : 'Unknown error';
 }
 
 /**
@@ -13,7 +13,10 @@ export function getErrorMessage(error: unknown): string {
  * Format: PREFIX-YYYYMMDDHHMMSS-XXXX
  */
 export function createDefaultCode(prefix: string): string {
-    const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `${prefix}-${stamp}-${suffix}`;
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, '')
+    .slice(0, 14);
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `${prefix}-${stamp}-${suffix}`;
 }

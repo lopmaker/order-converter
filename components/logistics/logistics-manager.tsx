@@ -87,8 +87,6 @@ interface OrderDetails {
   items: OrderItemRow[];
 }
 
-
-
 export function LogisticsManager() {
   const [orders, setOrders] = useState<OrderOption[]>([]);
   const [containers, setContainers] = useState<ContainerRow[]>([]);
@@ -137,36 +135,39 @@ export function LogisticsManager() {
     setContainers(data.data as ContainerRow[]);
   }, []);
 
-  const loadOrderLogisticsData = useCallback(async (orderId: string) => {
-    if (!orderId) {
-      setAllocations([]);
-      setShippingDocs([]);
-      return;
-    }
-    const [allocRes, docRes] = await Promise.all([
-      fetch(`/api/logistics/allocations?orderId=${orderId}`, { cache: 'no-store' }),
-      fetch(`/api/logistics/shipping-docs?orderId=${orderId}`, { cache: 'no-store' }),
-    ]);
-
-    const allocData = await allocRes.json();
-    const docData = await docRes.json();
-
-    if (allocRes.ok && allocData.success && Array.isArray(allocData.data)) {
-      const rows = allocData.data as AllocationRow[];
-      setAllocations(rows);
-      if (!selectedContainerId && rows.length > 0 && rows[0]?.containerId) {
-        setSelectedContainerId(rows[0].containerId);
+  const loadOrderLogisticsData = useCallback(
+    async (orderId: string) => {
+      if (!orderId) {
+        setAllocations([]);
+        setShippingDocs([]);
+        return;
       }
-    } else {
-      setAllocations([]);
-    }
+      const [allocRes, docRes] = await Promise.all([
+        fetch(`/api/logistics/allocations?orderId=${orderId}`, { cache: 'no-store' }),
+        fetch(`/api/logistics/shipping-docs?orderId=${orderId}`, { cache: 'no-store' }),
+      ]);
 
-    if (docRes.ok && docData.success && Array.isArray(docData.data)) {
-      setShippingDocs(docData.data as ShippingDocRow[]);
-    } else {
-      setShippingDocs([]);
-    }
-  }, [selectedContainerId]);
+      const allocData = await allocRes.json();
+      const docData = await docRes.json();
+
+      if (allocRes.ok && allocData.success && Array.isArray(allocData.data)) {
+        const rows = allocData.data as AllocationRow[];
+        setAllocations(rows);
+        if (!selectedContainerId && rows.length > 0 && rows[0]?.containerId) {
+          setSelectedContainerId(rows[0].containerId);
+        }
+      } else {
+        setAllocations([]);
+      }
+
+      if (docRes.ok && docData.success && Array.isArray(docData.data)) {
+        setShippingDocs(docData.data as ShippingDocRow[]);
+      } else {
+        setShippingDocs([]);
+      }
+    },
+    [selectedContainerId]
+  );
 
   useEffect(() => {
     const init = async () => {
@@ -211,12 +212,11 @@ export function LogisticsManager() {
 
   const getLatestShippingDoc = () => {
     if (shippingDocs.length === 0) return null;
-    return [...shippingDocs]
-      .sort((a, b) => {
-        const ta = new Date(a.issueDate || 0).getTime();
-        const tb = new Date(b.issueDate || 0).getTime();
-        return tb - ta;
-      })[0];
+    return [...shippingDocs].sort((a, b) => {
+      const ta = new Date(a.issueDate || 0).getTime();
+      const tb = new Date(b.issueDate || 0).getTime();
+      return tb - ta;
+    })[0];
   };
 
   const getSafeDate = (value?: string | null) => {
@@ -267,9 +267,19 @@ export function LogisticsManager() {
       title: 'Edit Container',
       fields: [
         { key: 'containerNo', label: 'Container No', defaultValue: row.containerNo || '' },
-        { key: 'vessel', label: 'Vessel Name', defaultValue: row.vesselName || '', placeholder: 'optional' },
+        {
+          key: 'vessel',
+          label: 'Vessel Name',
+          defaultValue: row.vesselName || '',
+          placeholder: 'optional',
+        },
         { key: 'status', label: 'Status', defaultValue: row.status || 'PLANNED' },
-        { key: 'eta', label: 'ETA (YYYY-MM-DD)', defaultValue: row.eta ? new Date(row.eta).toISOString().slice(0, 10) : '', placeholder: 'optional' },
+        {
+          key: 'eta',
+          label: 'ETA (YYYY-MM-DD)',
+          defaultValue: row.eta ? new Date(row.eta).toISOString().slice(0, 10) : '',
+          placeholder: 'optional',
+        },
       ],
     });
     if (!result) return;
@@ -366,17 +376,14 @@ export function LogisticsManager() {
     await runAction('EXPORT_SHIP_REQ_XLSX', async () => {
       const order = await loadOrderDetails();
       const latestDoc = getLatestShippingDoc();
-      const container = selectedContainerId ? containers.find((c) => c.id === selectedContainerId) : null;
+      const container = selectedContainerId
+        ? containers.find((c) => c.id === selectedContainerId)
+        : null;
       const payload = parsePayload(latestDoc?.payload || null);
       const Workbook = (await import('exceljs')).default.Workbook;
       const workbook = new Workbook();
       const ws = workbook.addWorksheet('3PL Request');
-      ws.columns = [
-        { width: 20 },
-        { width: 40 },
-        { width: 20 },
-        { width: 28 },
-      ];
+      ws.columns = [{ width: 20 }, { width: 40 }, { width: 20 }, { width: 28 }];
 
       ws.mergeCells('A1:D1');
       ws.getCell('A1').value = 'SHIPMENT BOOKING REQUEST (TO 3PL)';
@@ -458,7 +465,9 @@ export function LogisticsManager() {
     await runAction('EXPORT_SHIP_REQ_PDF', async () => {
       const order = await loadOrderDetails();
       const latestDoc = getLatestShippingDoc();
-      const container = selectedContainerId ? containers.find((c) => c.id === selectedContainerId) : null;
+      const container = selectedContainerId
+        ? containers.find((c) => c.id === selectedContainerId)
+        : null;
       const payload = parsePayload(latestDoc?.payload || null);
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
@@ -475,7 +484,11 @@ export function LogisticsManager() {
       doc.text(`Supplier: ${order.supplierName || '-'}`, 110, 34);
       doc.text(`Ship To: ${order.shipTo || '-'}`, 14, 40);
       doc.text(`Ship Via: ${order.shipVia || '-'}`, 110, 40);
-      doc.text(`Container: ${container?.containerNo || payload.containerNo || 'TBD by 3PL'}`, 14, 46);
+      doc.text(
+        `Container: ${container?.containerNo || payload.containerNo || 'TBD by 3PL'}`,
+        14,
+        46
+      );
       doc.text(`Vessel: ${container?.vesselName || payload.vesselName || 'TBD by 3PL'}`, 110, 46);
       doc.text(`BOL Link: ${payload.bolUrl || '-'}`, 14, 52, { maxWidth: 180 });
       doc.text(`7501 Link: ${payload.customs7501Url || '-'}`, 14, 58, { maxWidth: 180 });
@@ -502,7 +515,9 @@ export function LogisticsManager() {
     await runAction('EXPORT_CUSTOMER_DOCS_XLSX', async () => {
       const order = await loadOrderDetails();
       const latestDoc = getLatestShippingDoc();
-      const container = selectedContainerId ? containers.find((c) => c.id === selectedContainerId) : null;
+      const container = selectedContainerId
+        ? containers.find((c) => c.id === selectedContainerId)
+        : null;
       const payload = parsePayload(latestDoc?.payload || null);
       const isHK = (order.customerName || '').toLowerCase().includes('hongkong');
       const issuerName = isHK ? 'MIJENRO HONGKONG LTD' : 'MIJENRO INTERNATIONAL LLC';
@@ -515,7 +530,15 @@ export function LogisticsManager() {
       const inv = workbook.addWorksheet('INV');
       const pl = workbook.addWorksheet('PL');
       [inv, pl].forEach((ws) => {
-        ws.columns = [{ width: 20 }, { width: 36 }, { width: 14 }, { width: 40 }, { width: 12 }, { width: 14 }, { width: 16 }];
+        ws.columns = [
+          { width: 20 },
+          { width: 36 },
+          { width: 14 },
+          { width: 40 },
+          { width: 12 },
+          { width: 14 },
+          { width: 16 },
+        ];
       });
 
       inv.mergeCells('A1:G1');
@@ -554,7 +577,10 @@ export function LogisticsManager() {
         ]);
       });
       const invTotalQty = order.items.reduce((s, x) => s + Number(x.quantity || 0), 0);
-      const invTotal = order.items.reduce((s, x) => s + Number(x.quantity || 0) * Number(x.customerUnitPrice || 0), 0);
+      const invTotal = order.items.reduce(
+        (s, x) => s + Number(x.quantity || 0) * Number(x.customerUnitPrice || 0),
+        0
+      );
       const invTotalRow = inv.addRow(['GRAND TOTAL', '', '', '', invTotalQty, '', invTotal]);
       invTotalRow.font = { bold: true };
       inv.getColumn(6).numFmt = '"$"#,##0.00';
@@ -572,7 +598,15 @@ export function LogisticsManager() {
       pl.getCell('E12').value = container?.containerNo || payload.containerNo || '';
 
       const plHeader = pl.addRow([]);
-      plHeader.values = ['VPO/SO', 'Product Code', 'Color', 'Description', 'CTNS', 'QTY.', 'Total Pcs'];
+      plHeader.values = [
+        'VPO/SO',
+        'Product Code',
+        'Color',
+        'Description',
+        'CTNS',
+        'QTY.',
+        'Total Pcs',
+      ];
       plHeader.font = { bold: true };
       order.items.forEach((item) => {
         const qty = Number(item.quantity || 0);
@@ -609,7 +643,9 @@ export function LogisticsManager() {
     await runAction('EXPORT_CUSTOMER_DOCS_PDF', async () => {
       const order = await loadOrderDetails();
       const latestDoc = getLatestShippingDoc();
-      const container = selectedContainerId ? containers.find((c) => c.id === selectedContainerId) : null;
+      const container = selectedContainerId
+        ? containers.find((c) => c.id === selectedContainerId)
+        : null;
       const payload = parsePayload(latestDoc?.payload || null);
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
@@ -671,8 +707,16 @@ export function LogisticsManager() {
       title: 'Shipping Document Links',
       fields: [
         { key: 'bolUrl', label: 'BOL upload/download link', defaultValue: payload.bolUrl || '' },
-        { key: 'customs7501Url', label: '7501 upload/download link', defaultValue: payload.customs7501Url || '' },
-        { key: 'entryNoticeUrl', label: 'Warehouse entry notice link', defaultValue: payload.entryNoticeUrl || '' },
+        {
+          key: 'customs7501Url',
+          label: '7501 upload/download link',
+          defaultValue: payload.customs7501Url || '',
+        },
+        {
+          key: 'entryNoticeUrl',
+          label: 'Warehouse entry notice link',
+          defaultValue: payload.entryNoticeUrl || '',
+        },
         { key: 'bolNo', label: 'BOL number', defaultValue: payload.bolNo || '' },
       ],
     });
@@ -771,28 +815,46 @@ export function LogisticsManager() {
           disabled={!selectedOrderId || busyAction === 'EXPORT_CUSTOMER_DOCS_XLSX'}
           onClick={exportCustomerDocsExcel}
         >
-          {busyAction === 'EXPORT_CUSTOMER_DOCS_XLSX' ? 'Exporting...' : 'Export Customer CI+PL (Excel)'}
+          {busyAction === 'EXPORT_CUSTOMER_DOCS_XLSX'
+            ? 'Exporting...'
+            : 'Export Customer CI+PL (Excel)'}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'EXPORT_CUSTOMER_DOCS_PDF'}
           onClick={exportCustomerDocsPdf}
         >
-          {busyAction === 'EXPORT_CUSTOMER_DOCS_PDF' ? 'Exporting...' : 'Export Customer CI+PL (PDF)'}
+          {busyAction === 'EXPORT_CUSTOMER_DOCS_PDF'
+            ? 'Exporting...'
+            : 'Export Customer CI+PL (PDF)'}
         </Button>
       </div>
 
       {selectedOrder && (
         <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-          Current Order: <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
-          <span className="font-medium text-foreground">{selectedOrder.workflowStatus || 'PO_UPLOADED'}</span>
+          Current Order:{' '}
+          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
+          <span className="font-medium text-foreground">
+            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
+          </span>
         </div>
       )}
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Input placeholder="New Container No" value={containerNo} onChange={(e) => setContainerNo(e.target.value)} />
-        <Input placeholder="Vessel Name" value={vesselName} onChange={(e) => setVesselName(e.target.value)} />
-        <Button onClick={createContainer} disabled={!containerNo.trim() || busyAction === 'CREATE_CONTAINER'}>
+        <Input
+          placeholder="New Container No"
+          value={containerNo}
+          onChange={(e) => setContainerNo(e.target.value)}
+        />
+        <Input
+          placeholder="Vessel Name"
+          value={vesselName}
+          onChange={(e) => setVesselName(e.target.value)}
+        />
+        <Button
+          onClick={createContainer}
+          disabled={!containerNo.trim() || busyAction === 'CREATE_CONTAINER'}
+        >
           {busyAction === 'CREATE_CONTAINER' ? 'Creating...' : 'Create Container'}
         </Button>
       </div>
@@ -894,7 +956,11 @@ export function LogisticsManager() {
                 <TableRow key={row.id}>
                   <TableCell className="font-medium">{row.docNo}</TableCell>
                   <TableCell>{orderMap.get(row.orderId)?.vpoNumber || row.orderId}</TableCell>
-                  <TableCell>{row.containerId ? containerMap.get(row.containerId)?.containerNo || row.containerId : '-'}</TableCell>
+                  <TableCell>
+                    {row.containerId
+                      ? containerMap.get(row.containerId)?.containerNo || row.containerId
+                      : '-'}
+                  </TableCell>
                   <TableCell>{formatDate(row.issueDate)}</TableCell>
                   <TableCell>{row.status || '-'}</TableCell>
                   <TableCell className="text-right">
@@ -936,9 +1002,13 @@ export function LogisticsManager() {
               allocations.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{orderMap.get(row.orderId)?.vpoNumber || row.orderId}</TableCell>
-                  <TableCell>{containerMap.get(row.containerId)?.containerNo || row.containerId}</TableCell>
+                  <TableCell>
+                    {containerMap.get(row.containerId)?.containerNo || row.containerId}
+                  </TableCell>
                   <TableCell className="text-right">{row.allocatedQty ?? '-'}</TableCell>
-                  <TableCell className="text-right">{row.allocatedAmount ? `$${Number(row.allocatedAmount).toFixed(2)}` : '-'}</TableCell>
+                  <TableCell className="text-right">
+                    {row.allocatedAmount ? `$${Number(row.allocatedAmount).toFixed(2)}` : '-'}
+                  </TableCell>
                   <TableCell>{formatDate(row.createdAt)}</TableCell>
                 </TableRow>
               ))

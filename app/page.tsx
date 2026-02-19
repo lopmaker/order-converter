@@ -1,16 +1,17 @@
 'use client';
 
-import Link from "next/link";
-import { useState, useRef, useCallback, useEffect } from "react";
-import { PdfUploader } from "@/components/pdf-viewer/pdf-uploader";
-import { OrderForm } from "@/components/order-form/order-form";
-import { FileList } from "@/components/sidebar/file-list";
-import { useOrders } from "@/components/orders-provider";
-import { FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from 'next/link';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { PdfUploader } from '@/components/pdf-viewer/pdf-uploader';
+import { OrderForm } from '@/components/order-form/order-form';
+import { FileList } from '@/components/sidebar/file-list';
+import { useOrders } from '@/components/orders-provider';
+import { FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Home() {
-  const { orders, activeOrderId, setActiveOrderId, addOrders, removeOrder, updateOrder } = useOrders();
+  const { orders, activeOrderId, setActiveOrderId, addOrders, removeOrder, updateOrder } =
+    useOrders();
 
   // Resizable panel state
   const [leftWidth, setLeftWidth] = useState(20); // Sidebar width percentage
@@ -26,10 +27,13 @@ export default function Home() {
     removeOrder(id, e);
   };
 
-  const activeOrder = orders.find(o => o.id === activeOrderId);
+  const activeOrder = orders.find((o) => o.id === activeOrderId);
 
   // --- Resizer ---
-  const handleMouseDown = useCallback((e: React.MouseEvent) => { isDragging.current = true; e.preventDefault(); }, []);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    isDragging.current = true;
+    e.preventDefault();
+  }, []);
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging.current || !containerRef.current) return;
@@ -37,12 +41,16 @@ export default function Home() {
       const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
       setLeftWidth(Math.max(15, Math.min(40, newWidth))); // Limit sidebar width
     };
-    const handleMouseUp = () => { isDragging.current = false; };
+    const handleMouseUp = () => {
+      isDragging.current = false;
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
   }, []);
-
 
   // --- Render ---
   return (
@@ -57,19 +65,19 @@ export default function Home() {
         </div>
         <nav>
           <Button asChild variant="outline" size="lg" className="px-6">
-            <Link href="/dashboard">
-              View Sales Dashboard
-            </Link>
+            <Link href="/dashboard">View Sales Dashboard</Link>
           </Button>
         </nav>
       </header>
 
       {/* Workspace */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
-
         {/* Sidebar (File List) */}
         {orders.length > 0 && (
-          <div style={{ width: `${leftWidth}%` }} className="h-full flex flex-col border-r bg-muted/10 relative shrink-0">
+          <div
+            style={{ width: `${leftWidth}%` }}
+            className="h-full flex flex-col border-r bg-muted/10 relative shrink-0"
+          >
             <FileList
               orders={orders}
               activeOrderId={activeOrderId}
@@ -87,7 +95,6 @@ export default function Home() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-
           {/* Case 1: No Orders (and no active ID) -> Large Uploader */}
           {orders.length === 0 && (
             <div className="flex-1 p-8 bg-muted/10">
@@ -103,7 +110,9 @@ export default function Home() {
                 {/* PDF Preview */}
                 <div className="w-[40%] h-full flex flex-col border-r bg-muted/20">
                   <div className="p-2 border-b text-xs flex justify-between bg-background">
-                    <span className="font-semibold truncate">{activeOrder.fileName || activeOrder.file?.name || 'Unknown File'}</span>
+                    <span className="font-semibold truncate">
+                      {activeOrder.fileName || activeOrder.file?.name || 'Unknown File'}
+                    </span>
                   </div>
                   {activeOrder.file ? (
                     <iframe
@@ -153,14 +162,15 @@ export default function Home() {
             <div className="flex-1 p-8 bg-muted/10 flex flex-col items-center justify-center">
               <div className="text-center mb-8">
                 <h2 className="text-2xl font-semibold">Your Orders</h2>
-                <p className="text-muted-foreground">Select an order from the sidebar to edit, or upload more.</p>
+                <p className="text-muted-foreground">
+                  Select an order from the sidebar to edit, or upload more.
+                </p>
               </div>
               <div className="w-full max-w-xl">
                 <PdfUploader onFilesSelect={handleFilesSelect} />
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

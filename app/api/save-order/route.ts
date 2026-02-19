@@ -3,7 +3,12 @@ import { db } from '@/db';
 import { orders, orderItems, tariffRates } from '@/db/schema';
 import { ExtractedOrderData } from '@/lib/parser';
 import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/workflow';
-import { deriveTariffKey, inferOriginCountry, normalizeTariffKey, resolveTariffRate } from '@/lib/tariffs';
+import {
+  deriveTariffKey,
+  inferOriginCountry,
+  normalizeTariffKey,
+  resolveTariffRate,
+} from '@/lib/tariffs';
 
 export async function POST(req: NextRequest) {
   try {
@@ -71,7 +76,8 @@ export async function POST(req: NextRequest) {
     const totalEstimatedMargin = round2(
       itemPayloads.reduce((sum, item) => sum + Number(item.estimatedMargin || 0), 0)
     );
-    const totalEstimatedMarginRate = totalRevenue > 0 ? round4(totalEstimatedMargin / totalRevenue) : 0;
+    const totalEstimatedMarginRate =
+      totalRevenue > 0 ? round4(totalEstimatedMargin / totalRevenue) : 0;
 
     const [insertedOrder] = await db
       .insert(orders)
@@ -95,7 +101,7 @@ export async function POST(req: NextRequest) {
         customerNotes: data.customerNotes,
         estimatedMargin: totalEstimatedMargin.toFixed(2),
         estimatedMarginRate: totalEstimatedMarginRate.toFixed(4),
-      })
+      } as any)
       .returning({ id: orders.id });
 
     if (!insertedOrder) {
@@ -123,9 +129,6 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Save Order Error:', error);
-    return NextResponse.json(
-      { error: `Failed to save order: ${message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Failed to save order: ${message}` }, { status: 500 });
   }
 }

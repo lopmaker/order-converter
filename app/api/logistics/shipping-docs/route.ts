@@ -9,7 +9,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 function createDefaultCode(prefix: string): string {
-  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, '')
+    .slice(0, 14);
   return `${prefix}-${stamp}`;
 }
 
@@ -18,7 +21,11 @@ export async function GET(req: NextRequest) {
     const orderId = req.nextUrl.searchParams.get('orderId');
 
     const data = orderId
-      ? await db.select().from(shippingDocuments).where(eq(shippingDocuments.orderId, orderId)).orderBy(desc(shippingDocuments.createdAt))
+      ? await db
+          .select()
+          .from(shippingDocuments)
+          .where(eq(shippingDocuments.orderId, orderId))
+          .orderBy(desc(shippingDocuments.createdAt))
       : await db.select().from(shippingDocuments).orderBy(desc(shippingDocuments.createdAt));
 
     return NextResponse.json({ success: true, data });

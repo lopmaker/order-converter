@@ -35,7 +35,10 @@ export async function POST() {
             collection: row.collection,
             material: row.material,
           });
-          const originCountry = inferOriginCountry(row.supplierName, row.supplierAddress).toLowerCase();
+          const originCountry = inferOriginCountry(
+            row.supplierName,
+            row.supplierAddress
+          ).toLowerCase();
           return normalizeTariffKey(`${originCountry} | ${baseTariffKey}`);
         })
       )
@@ -47,7 +50,10 @@ export async function POST() {
 
     const existingRows = await db.select().from(tariffRates);
     const existing = new Map<string, number>(
-      existingRows.map((row) => [normalizeTariffKey(row.productClass), parseDecimalInput(row.tariffRate, 0)])
+      existingRows.map((row) => [
+        normalizeTariffKey(row.productClass),
+        parseDecimalInput(row.tariffRate, 0),
+      ])
     );
 
     const missingKeys = tariffKeys.filter((tariffKey) => !existing.has(tariffKey));

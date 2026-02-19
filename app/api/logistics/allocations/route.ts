@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
       data = await db
         .select()
         .from(containerAllocations)
-        .where(and(eq(containerAllocations.containerId, containerId), eq(containerAllocations.orderId, orderId)))
+        .where(
+          and(
+            eq(containerAllocations.containerId, containerId),
+            eq(containerAllocations.orderId, orderId)
+          )
+        )
         .orderBy(desc(containerAllocations.createdAt));
     } else if (containerId) {
       data = await db
@@ -34,7 +39,10 @@ export async function GET(req: NextRequest) {
         .where(eq(containerAllocations.orderId, orderId))
         .orderBy(desc(containerAllocations.createdAt));
     } else {
-      data = await db.select().from(containerAllocations).orderBy(desc(containerAllocations.createdAt));
+      data = await db
+        .select()
+        .from(containerAllocations)
+        .orderBy(desc(containerAllocations.createdAt));
     }
 
     return NextResponse.json({ success: true, data });
@@ -65,7 +73,9 @@ export async function POST(req: NextRequest) {
         orderId: body.orderId,
         orderItemId: body.orderItemId || null,
         allocatedQty:
-          body.allocatedQty !== undefined ? Math.max(0, Math.round(parseDecimalInput(body.allocatedQty, 0))) : null,
+          body.allocatedQty !== undefined
+            ? Math.max(0, Math.round(parseDecimalInput(body.allocatedQty, 0)))
+            : null,
         allocatedAmount:
           body.allocatedAmount !== undefined
             ? parseDecimalInput(body.allocatedAmount, 0).toFixed(2)

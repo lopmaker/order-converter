@@ -68,10 +68,7 @@ export async function POST(req: NextRequest) {
     const { text } = body;
 
     if (!text || typeof text !== 'string') {
-      return NextResponse.json(
-        { error: 'No text provided for AI parsing' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No text provided for AI parsing' }, { status: 400 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -122,7 +119,9 @@ export async function POST(req: NextRequest) {
 
     if (!result) {
       console.error('All models failed. Last error:', lastError);
-      throw lastError ?? new Error('Failed to get response from Gemini API after trying all models');
+      throw (
+        lastError ?? new Error('Failed to get response from Gemini API after trying all models')
+      );
     }
 
     const responseText = result.response.text();

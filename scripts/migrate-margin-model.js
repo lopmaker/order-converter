@@ -39,21 +39,45 @@ async function run() {
       );
     `);
 
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_margin NUMERIC(12,2);`);
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_margin_rate NUMERIC(7,4);`);
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS workflow_status TEXT DEFAULT 'PO_UPLOADED';`);
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_margin NUMERIC(12,2);`
+    );
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS estimated_margin_rate NUMERIC(7,4);`
+    );
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS workflow_status TEXT DEFAULT 'PO_UPLOADED';`
+    );
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;`);
     await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS closed_at TIMESTAMPTZ;`);
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_term_days INTEGER DEFAULT 30;`);
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS vendor_term_days INTEGER DEFAULT 30;`);
-    await client.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_term_days INTEGER DEFAULT 15;`);
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_term_days INTEGER DEFAULT 30;`
+    );
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS vendor_term_days INTEGER DEFAULT 30;`
+    );
+    await client.query(
+      `ALTER TABLE orders ADD COLUMN IF NOT EXISTS logistics_term_days INTEGER DEFAULT 15;`
+    );
 
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS customer_unit_price NUMERIC(10,2);`);
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS vendor_unit_price NUMERIC(10,2);`);
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS tariff_rate NUMERIC(7,4);`);
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_duty_cost NUMERIC(12,2);`);
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_3pl_cost NUMERIC(12,2);`);
-    await client.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_margin NUMERIC(12,2);`);
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS customer_unit_price NUMERIC(10,2);`
+    );
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS vendor_unit_price NUMERIC(10,2);`
+    );
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS tariff_rate NUMERIC(7,4);`
+    );
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_duty_cost NUMERIC(12,2);`
+    );
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_3pl_cost NUMERIC(12,2);`
+    );
+    await client.query(
+      `ALTER TABLE order_items ADD COLUMN IF NOT EXISTS estimated_margin NUMERIC(12,2);`
+    );
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS containers (

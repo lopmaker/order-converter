@@ -106,7 +106,10 @@ export async function GET(_req: Request, { params }: RouteContext) {
 
     const containerRows =
       containerIds.size > 0
-        ? await db.select().from(containers).where(inArray(containers.id, Array.from(containerIds)))
+        ? await db
+            .select()
+            .from(containers)
+            .where(inArray(containers.id, Array.from(containerIds)))
         : [];
     const containerMap = new Map(containerRows.map((row) => [row.id, row]));
 
@@ -131,10 +134,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
             .select()
             .from(payments)
             .where(
-              and(
-                eq(payments.targetType, 'VENDOR_BILL'),
-                inArray(payments.targetId, vendorBillIds)
-              )
+              and(eq(payments.targetType, 'VENDOR_BILL'), inArray(payments.targetId, vendorBillIds))
             )
         : Promise.resolve([]),
       logisticsBillIds.length > 0

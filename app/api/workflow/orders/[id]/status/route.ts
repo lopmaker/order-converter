@@ -4,8 +4,6 @@ import { orders } from '@/db/schema';
 import { getErrorMessage } from '@/lib/api-helpers';
 import { eq } from 'drizzle-orm';
 
-
-
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
@@ -27,10 +25,16 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       .update(orders)
       .set({
         workflowStatus: body.status.trim(),
-        deliveredAt: body.deliveredAt ? new Date(body.deliveredAt) : body.status === 'DELIVERED' ? new Date() : undefined,
-        customerTermDays: typeof body.customerTermDays === 'number' ? body.customerTermDays : undefined,
+        deliveredAt: body.deliveredAt
+          ? new Date(body.deliveredAt)
+          : body.status === 'DELIVERED'
+            ? new Date()
+            : undefined,
+        customerTermDays:
+          typeof body.customerTermDays === 'number' ? body.customerTermDays : undefined,
         vendorTermDays: typeof body.vendorTermDays === 'number' ? body.vendorTermDays : undefined,
-        logisticsTermDays: typeof body.logisticsTermDays === 'number' ? body.logisticsTermDays : undefined,
+        logisticsTermDays:
+          typeof body.logisticsTermDays === 'number' ? body.logisticsTermDays : undefined,
       })
       .where(eq(orders.id, id))
       .returning();

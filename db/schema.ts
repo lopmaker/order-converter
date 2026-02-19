@@ -1,22 +1,23 @@
-
-import { pgTable, text, decimal, timestamp, integer, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, decimal, timestamp, integer, uuid, index } from 'drizzle-orm/pg-core';
 
 // Orders Table
-export const orders = pgTable('orders', {
+export const orders = pgTable(
+  'orders',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     vpoNumber: text('vpo_number').notNull(),
     customerName: text('customer_name'),
     customerAddress: text('customer_address'),
     supplierName: text('supplier_name'),
     supplierAddress: text('supplier_address'),
-    orderDate: text('order_date'),
+    orderDate: timestamp('order_date', { withTimezone: true }),
     totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
     status: text('status').default('Confirmed'),
 
     // New Fields
     soReference: text('so_reference'),
-    expShipDate: text('exp_ship_date'),
-    cancelDate: text('cancel_date'),
+    expShipDate: timestamp('exp_ship_date', { withTimezone: true }),
+    cancelDate: timestamp('cancel_date', { withTimezone: true }),
     shipTo: text('ship_to'),
     shipVia: text('ship_via'),
     shipmentTerms: text('shipment_terms'),
@@ -32,12 +33,23 @@ export const orders = pgTable('orders', {
     estimatedMarginRate: decimal('estimated_margin_rate', { precision: 7, scale: 4 }),
 
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (orders) => ({
+    vpoNumberIndex: index('vpo_number_idx').on(orders.vpoNumber),
+    customerNameIndex: index('customer_name_idx').on(orders.customerName),
+    statusIndex: index('status_idx').on(orders.status),
+    workflowStatusIndex: index('workflow_status_idx').on(orders.workflowStatus),
+  })
+);
 
 // Order Items Table
-export const orderItems = pgTable('order_items', {
+export const orderItems = pgTable(
+  'order_items',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
-    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
     productCode: text('product_code'),
     description: text('description'),
     quantity: integer('quantity'),
@@ -58,9 +70,15 @@ export const orderItems = pgTable('order_items', {
     collection: text('collection'),
 
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (orderItems) => ({
+    orderIdIndex: index('order_id_idx').on(orderItems.orderId),
+  })
+);
 
-export const tariffRates = pgTable('tariff_rates', {
+export const tariffRates = pgTable(
+  'tariff_rates',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     productClass: text('product_class').notNull().unique(),
     tariffRate: decimal('tariff_rate', { precision: 7, scale: 4 }).notNull().default('0'),
@@ -68,9 +86,15 @@ export const tariffRates = pgTable('tariff_rates', {
     notes: text('notes'),
     updatedAt: timestamp('updated_at').defaultNow(),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (tariffRates) => ({
+    productClassIndex: index('product_class_idx').on(tariffRates.productClass),
+  })
+);
 
-export const containers = pgTable('containers', {
+export const containers = pgTable(
+  'containers',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     containerNo: text('container_no').notNull().unique(),
     vesselName: text('vessel_name'),
@@ -81,34 +105,64 @@ export const containers = pgTable('containers', {
     ata: timestamp('ata', { withTimezone: true }),
     arrivalAtWarehouse: timestamp('arrival_at_warehouse', { withTimezone: true }),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (containers) => ({
+    containerNoIndex: index('container_no_idx').on(containers.containerNo),
+  })
+);
 
-export const containerAllocations = pgTable('container_allocations', {
+export const containerAllocations = pgTable(
+  'container_allocations',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
-    containerId: uuid('container_id').references(() => containers.id, { onDelete: 'cascade' }).notNull(),
-    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    containerId: uuid('container_id')
+      .references(() => containers.id, { onDelete: 'cascade' })
+      .notNull(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
     orderItemId: uuid('order_item_id').references(() => orderItems.id, { onDelete: 'set null' }),
     allocatedQty: integer('allocated_qty'),
     allocatedAmount: decimal('allocated_amount', { precision: 12, scale: 2 }),
     notes: text('notes'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (containerAllocations) => ({
+    containerIdIndex: index('container_id_idx').on(containerAllocations.containerId),
+    orderIdIndex: index('container_allocation_order_id_idx').on(containerAllocations.orderId),
+    orderItemIdIndex: index('order_item_id_idx').on(containerAllocations.orderItemId),
+  })
+);
 
-export const shippingDocuments = pgTable('shipping_documents', {
+export const shippingDocuments = pgTable(
+  'shipping_documents',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     docNo: text('doc_no').notNull().unique(),
-    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
     containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
     issueDate: timestamp('issue_date', { withTimezone: true }).defaultNow(),
     status: text('status').default('DRAFT'),
     payload: text('payload'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (shippingDocuments) => ({
+    docNoIndex: index('doc_no_idx').on(shippingDocuments.docNo),
+    orderIdIndex: index('shipping_document_order_id_idx').on(shippingDocuments.orderId),
+    containerIdIndex: index('shipping_document_container_id_idx').on(shippingDocuments.containerId),
+  })
+);
 
-export const commercialInvoices = pgTable('commercial_invoices', {
+export const commercialInvoices = pgTable(
+  'commercial_invoices',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     invoiceNo: text('invoice_no').notNull().unique(),
-    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
     containerId: uuid('container_id').references(() => containers.id, { onDelete: 'set null' }),
     issueDate: timestamp('issue_date', { withTimezone: true }).defaultNow(),
     dueDate: timestamp('due_date', { withTimezone: true }),
@@ -116,21 +170,40 @@ export const commercialInvoices = pgTable('commercial_invoices', {
     amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
     status: text('status').default('OPEN'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (commercialInvoices) => ({
+    invoiceNoIndex: index('invoice_no_idx').on(commercialInvoices.invoiceNo),
+    orderIdIndex: index('commercial_invoice_order_id_idx').on(commercialInvoices.orderId),
+    containerIdIndex: index('commercial_invoice_container_id_idx').on(
+      commercialInvoices.containerId
+    ),
+  })
+);
 
-export const vendorBills = pgTable('vendor_bills', {
+export const vendorBills = pgTable(
+  'vendor_bills',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     billNo: text('bill_no').notNull().unique(),
-    orderId: uuid('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+    orderId: uuid('order_id')
+      .references(() => orders.id, { onDelete: 'cascade' })
+      .notNull(),
     issueDate: timestamp('issue_date', { withTimezone: true }).defaultNow(),
     dueDate: timestamp('due_date', { withTimezone: true }),
     currency: text('currency').default('USD'),
     amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
     status: text('status').default('OPEN'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (vendorBills) => ({
+    billNoIndex: index('bill_no_idx').on(vendorBills.billNo),
+    orderIdIndex: index('vendor_bill_order_id_idx').on(vendorBills.orderId),
+  })
+);
 
-export const logisticsBills = pgTable('logistics_bills', {
+export const logisticsBills = pgTable(
+  'logistics_bills',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     billNo: text('bill_no').notNull().unique(),
     orderId: uuid('order_id').references(() => orders.id, { onDelete: 'set null' }),
@@ -142,9 +215,17 @@ export const logisticsBills = pgTable('logistics_bills', {
     amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
     status: text('status').default('OPEN'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (logisticsBills) => ({
+    billNoIndex: index('logistics_bill_no_idx').on(logisticsBills.billNo),
+    orderIdIndex: index('logistics_bill_order_id_idx').on(logisticsBills.orderId),
+    containerIdIndex: index('logistics_bill_container_id_idx').on(logisticsBills.containerId),
+  })
+);
 
-export const payments = pgTable('payments', {
+export const payments = pgTable(
+  'payments',
+  {
     id: uuid('id').defaultRandom().primaryKey(),
     targetType: text('target_type').notNull(), // CUSTOMER_INVOICE | VENDOR_BILL | LOGISTICS_BILL
     targetId: uuid('target_id').notNull(),
@@ -155,4 +236,8 @@ export const payments = pgTable('payments', {
     referenceNo: text('reference_no'),
     notes: text('notes'),
     createdAt: timestamp('created_at').defaultNow(),
-});
+  },
+  (payments) => ({
+    targetIndex: index('target_idx').on(payments.targetType, payments.targetId),
+  })
+);

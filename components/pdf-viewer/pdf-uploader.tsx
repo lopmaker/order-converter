@@ -13,11 +13,14 @@ interface PdfUploaderProps {
 }
 
 export function PdfUploader({ onFilesSelect }: PdfUploaderProps) {
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0) {
-      onFilesSelect(acceptedFiles);
-    }
-  }, [onFilesSelect]);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        onFilesSelect(acceptedFiles);
+      }
+    },
+    [onFilesSelect]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -45,9 +48,7 @@ export function PdfUploader({ onFilesSelect }: PdfUploaderProps) {
         <p className="text-sm text-muted-foreground max-w-xs mb-6">
           Drag and drop multiple PO files here, or click to browse.
         </p>
-        <Button variant={isDragActive ? "default" : "outline"}>
-          Select Files
-        </Button>
+        <Button variant={isDragActive ? 'default' : 'outline'}>Select Files</Button>
       </Card>
     </div>
   );

@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 type BillStats = {
   total: number;
@@ -18,88 +18,19 @@ export type BusinessFlowSnapshot = {
   payments: number;
 };
 
-const FLOW_STAGES = [
-  {
-    key: "PO_UPLOADED",
-    title: "1. PO Uploaded",
-    trigger: "Save order",
-    summary: "Order and line items are created from customer PO.",
-  },
-  {
-    key: "SHIPPING_DOC_SENT",
-    title: "2. Shipping Doc Sent",
-    trigger: "Send Shipping Doc",
-    summary: "Shipping document is issued for 3PL booking.",
-  },
-  {
-    key: "IN_TRANSIT",
-    title: "3. In Transit",
-    trigger: "Start Transit",
-    summary: "Shipment is in transit and AR/AP core docs are opened.",
-  },
-  {
-    key: "AR_AP_OPEN",
-    title: "4. AR/AP Open",
-    trigger: "Mark Delivered",
-    summary: "Delivered; payment collection and payouts are in progress.",
-  },
-  {
-    key: "CLOSED",
-    title: "5. Closed",
-    trigger: "Auto by payment completion",
-    summary: "All related AR/AP documents are fully paid.",
-  },
-];
-
-const ACTION_EFFECTS = [
-  {
-    action: "Send Shipping Doc",
-    result: "Moves order to SHIPPING_DOC_SENT",
-    writes: "Creates shipping_documents if missing.",
-  },
-  {
-    action: "Start Transit",
-    result: "Moves order to IN_TRANSIT",
-    writes: "Creates commercial_invoices and vendor_bills if missing. Updates container to IN_TRANSIT when linked.",
-  },
-  {
-    action: "Mark Delivered",
-    result: "Moves order to AR_AP_OPEN",
-    writes: "Sets delivered_at and creates logistics_bills if missing. Updates container arrival timestamps when linked.",
-  },
-];
-
 function getCount(counts: Record<string, number>, key: string): number {
   return counts[key] || 0;
 }
 
-function findBottleneck(snapshot: BusinessFlowSnapshot): { title: string; count: number } | null {
-  const candidates = FLOW_STAGES.filter((stage) => stage.key !== "CLOSED");
-  let maxStage: { title: string; count: number } | null = null;
-
-  for (const stage of candidates) {
-    const count = getCount(snapshot.stageCounts, stage.key);
-    if (!maxStage || count > maxStage.count) {
-      maxStage = { title: stage.title, count };
-    }
-  }
-
-  if (!maxStage || maxStage.count === 0) return null;
-  return maxStage;
-}
-
-function getOtherStatusCount(snapshot: BusinessFlowSnapshot): number {
-  const knownTotal = FLOW_STAGES.reduce((sum, stage) => sum + getCount(snapshot.stageCounts, stage.key), 0);
+function getOtherStatusCount(snapshot: BusinessFlowSnapshot, flowStages: any[]): number {
+  const knownTotal = flowStages.reduce(
+    (sum, stage) => sum + getCount(snapshot.stageCounts, stage.key),
+    0
+  );
   return Math.max(0, snapshot.totalOrders - knownTotal);
 }
 
-function BillCard({
-  title,
-  stats,
-}: {
-  title: string;
-  stats: BillStats;
-}) {
+function BillCard({ title, stats }: { title: string; stats: BillStats }) {
   return (
     <div className="rounded-lg border p-4">
       <div className="mb-2 text-sm font-semibold">{title}</div>
@@ -113,16 +44,84 @@ function BillCard({
   );
 }
 
-export function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnapshot }) {
+export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnapshot }) {
+  const FLOW_STAGES = [
+    {
+      key: 'PO_UPLOADED',
+      title: '1. PO Uploaded',
+      trigger: 'Save order',
+      summary: 'Order and line items are created from customer PO.',
+    },
+    {
+      key: 'SHIPPING_DOC_SENT',
+      title: '2. Shipping Doc Sent',
+      trigger: 'Send Shipping Doc',
+      summary: 'Shipping document is issued for 3PL booking.',
+    },
+    {
+      key: 'IN_TRANSIT',
+      title: '3. In Transit',
+      trigger: 'Start Transit',
+      summary: 'Shipment is in transit and AR/AP core docs are opened.',
+    },
+    {
+      key: 'AR_AP_OPEN',
+      title: '4. AR/AP Open',
+      trigger: 'Mark Delivered',
+      summary: 'Delivered; payment collection and payouts are in progress.',
+    },
+    {
+      key: 'CLOSED',
+      title: '5. Closed',
+      trigger: 'Auto by payment completion',
+      summary: 'All related AR/AP documents are fully paid.',
+    },
+  ];
+
+  const ACTION_EFFECTS = [
+    {
+      action: 'Send Shipping Doc',
+      result: 'Moves order to SHIPPING_DOC_SENT',
+      writes: 'Creates shipping_documents if missing.',
+    },
+    {
+      action: 'Start Transit',
+      result: 'Moves order to IN_TRANSIT',
+      writes:
+        'Creates commercial_invoices and vendor_bills if missing. Updates container to IN_TRANSIT when linked.',
+    },
+    {
+      action: 'Mark Delivered',
+      result: 'Moves order to AR_AP_OPEN',
+      writes:
+        'Sets delivered_at and creates logistics_bills if missing. Updates container arrival timestamps when linked.',
+    },
+  ];
+
+  const findBottleneck = (snapshot: BusinessFlowSnapshot) => {
+    const candidates = FLOW_STAGES.filter((stage) => stage.key !== 'CLOSED');
+    let maxStage: { title: string; count: number } | null = null;
+
+    for (const stage of candidates) {
+      const count = getCount(snapshot.stageCounts, stage.key);
+      if (!maxStage || count > maxStage.count) {
+        maxStage = { title: stage.title, count };
+      }
+    }
+
+    if (!maxStage || maxStage.count === 0) return null;
+    return maxStage;
+  };
+
   const bottleneck = findBottleneck(snapshot);
-  const otherStatusCount = getOtherStatusCount(snapshot);
+  const otherStatusCount = getOtherStatusCount(snapshot, FLOW_STAGES);
 
   return (
     <Card className="col-span-1">
       <CardHeader>
         <CardTitle>Live Business Flow</CardTitle>
         <CardDescription>
-          Real-time status counts and document progress from your database.
+          Real-time status of orders and financial documents
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -130,12 +129,15 @@ export function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnapshot }
           <Badge variant="outline">Total Orders: {snapshot.totalOrders}</Badge>
           <Badge variant="outline">Shipping Docs: {snapshot.shippingDocs}</Badge>
           <Badge variant="outline">Payments: {snapshot.payments}</Badge>
-          {otherStatusCount > 0 && <Badge variant="destructive">Other Status: {otherStatusCount}</Badge>}
+          {otherStatusCount > 0 && (
+            <Badge variant="destructive">Other Status: {otherStatusCount}</Badge>
+          )}
         </div>
 
         {bottleneck && (
           <div className="rounded-lg border bg-muted/20 p-3 text-xs">
-            <span className="font-semibold">Current Bottleneck:</span> {bottleneck.title} ({bottleneck.count} orders)
+            <span className="font-semibold">Current Bottleneck:</span> {bottleneck.title} (
+            {bottleneck.count} orders)
           </div>
         )}
 
@@ -164,7 +166,10 @@ export function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnapshot }
             <div className="col-span-6">Database Side Effect</div>
           </div>
           {ACTION_EFFECTS.map((row) => (
-            <div key={row.action} className="grid grid-cols-12 border-b last:border-b-0 px-3 py-2 text-xs">
+            <div
+              key={row.action}
+              className="grid grid-cols-12 border-b last:border-b-0 px-3 py-2 text-xs"
+            >
               <div className="col-span-3 font-medium">{row.action}</div>
               <div className="col-span-3 text-muted-foreground">{row.result}</div>
               <div className="col-span-6 text-muted-foreground">{row.writes}</div>

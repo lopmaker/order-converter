@@ -1,0 +1,60 @@
+{
+    "HomePage": {
+        "title": "即时提取采购订单数据",
+        "subtitle": "上传您的 PDF，自动提取行项目，并直接同步到您的销售仪表板。",
+        "uploadTitle": "上传订单 PDF",
+        "uploadSubtitle": "将多个 PO 文件拖放到此处，或点击浏览。",
+        "selectFiles": "选择文件",
+        "viewDashboard": "查看销售仪表板",
+        "docs": "文档",
+        "secureProcessing": "安全处理",
+        "aiPowered": "AI 驱动",
+        "processedOrders": "已处理订单",
+        "processing": "处理中...",
+        "order": "订单",
+        "uploadMore": "上传更多"
+    },
+    "Dashboard": {
+        "title": "销售仪表板",
+        "overview": "概览",
+        "tariffs": "关税",
+        "logistics": "物流",
+        "finance": "财务",
+        "backToConverter": "返回转换器",
+        "totalSales": "总销售额",
+        "estMargin": "预估利润",
+        "totalOrders": "总订单数",
+        "recentActivity": "近期活动",
+        "allTimeRevenue": "历史总收入",
+        "includesDuty": "包含关税 + 预估 3PL",
+        "processedAndConfirmed": "已处理并确认",
+        "today": "今天",
+        "liveBusinessFlow": "实时业务流程",
+        "realTimeStatus": "来自数据库的实时状态计数和单据进度。",
+        "recentOrders": "近期订单"
+    },
+    "Tariffs": {
+        "title": "关税同步表",
+        "settings": "产品类别关税设置"
+    },
+    "Logistics": {
+        "title": "物流工作流",
+        "cardTitle": "集装箱、分配、发货单据"
+    },
+    "Finance": {
+        "title": "财务工作流",
+        "cardTitle": "应收 / 应付 / 结算"
+    },
+    "Common": {
+        "loading": "加载中...",
+        "error": "错误",
+        "success": "成功",
+        "save": "保存",
+        "cancel": "取消",
+        "delete": "删除",
+        "edit": "编辑",
+        "actions": "操作",
+        "status": "状态",
+        "date": "日期"
+    }
+}

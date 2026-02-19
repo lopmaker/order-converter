@@ -10,7 +10,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 function createDefaultCode(prefix: string): string {
-  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, '')
+    .slice(0, 14);
   return `${prefix}-${stamp}`;
 }
 
@@ -76,7 +79,9 @@ export async function POST(req: NextRequest) {
 
     await db
       .update(orders)
-      .set({ workflowStatus: order.workflowStatus === 'DELIVERED' ? 'AR_AP_OPEN' : order.workflowStatus })
+      .set({
+        workflowStatus: order.workflowStatus === 'DELIVERED' ? 'AR_AP_OPEN' : order.workflowStatus,
+      })
       .where(eq(orders.id, body.orderId));
     await recomputeOrderWorkflowStatus(body.orderId);
 

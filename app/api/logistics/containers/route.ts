@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
   try {
     const status = req.nextUrl.searchParams.get('status');
     const data = status
-      ? await db.select().from(containers).where(eq(containers.status, status)).orderBy(desc(containers.createdAt))
+      ? await db
+          .select()
+          .from(containers)
+          .where(eq(containers.status, status))
+          .orderBy(desc(containers.createdAt))
       : await db.select().from(containers).orderBy(desc(containers.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -106,7 +110,9 @@ export async function PATCH(req: NextRequest) {
       updateData.ata = body.ata ? new Date(body.ata) : null;
     }
     if (body.arrivalAtWarehouse !== undefined) {
-      updateData.arrivalAtWarehouse = body.arrivalAtWarehouse ? new Date(body.arrivalAtWarehouse) : null;
+      updateData.arrivalAtWarehouse = body.arrivalAtWarehouse
+        ? new Date(body.arrivalAtWarehouse)
+        : null;
     }
 
     if (Object.keys(updateData).length === 0) {

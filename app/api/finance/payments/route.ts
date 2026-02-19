@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import {
-  commercialInvoices,
-  logisticsBills,
-  payments,
-  vendorBills,
-} from '@/db/schema';
+import { commercialInvoices, logisticsBills, payments, vendorBills } from '@/db/schema';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { parseDecimalInput, round2 } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
@@ -23,16 +18,23 @@ function resolveTargetType(value: unknown): PaymentTargetType | null {
   return null;
 }
 
-async function refreshBillStatus(targetType: PaymentTargetType, targetId: string): Promise<string | null> {
+async function refreshBillStatus(
+  targetType: PaymentTargetType,
+  targetId: string
+): Promise<string | null> {
   const paidRows = await db
     .select({ amount: payments.amount })
     .from(payments)
     .where(and(eq(payments.targetType, targetType), eq(payments.targetId, targetId)));
 
-  const paidAmount = round2(paidRows.reduce((sum, row) => sum + parseDecimalInput(row.amount, 0), 0));
+  const paidAmount = round2(
+    paidRows.reduce((sum, row) => sum + parseDecimalInput(row.amount, 0), 0)
+  );
 
   if (targetType === 'CUSTOMER_INVOICE') {
-    const invoice = await db.query.commercialInvoices.findFirst({ where: eq(commercialInvoices.id, targetId) });
+    const invoice = await db.query.commercialInvoices.findFirst({
+      where: eq(commercialInvoices.id, targetId),
+    });
     if (!invoice) return null;
     const dueAmount = parseDecimalInput(invoice.amount, 0);
     const status = paidAmount >= dueAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN';
@@ -108,7 +110,9 @@ export async function GET(req: NextRequest) {
           ? db
               .select()
               .from(payments)
-              .where(and(eq(payments.targetType, 'VENDOR_BILL'), inArray(payments.targetId, vendorIds)))
+              .where(
+                and(eq(payments.targetType, 'VENDOR_BILL'), inArray(payments.targetId, vendorIds))
+              )
           : Promise.resolve([]),
         logisticsIds.length > 0
           ? db
@@ -142,7 +146,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: merged });
     }
 
-    const data = await db.select().from(payments).orderBy(desc(payments.paymentDate), desc(payments.createdAt));
+    const data = await db
+      .select()
+      .from(payments)
+      .orderBy(desc(payments.paymentDate), desc(payments.createdAt));
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });

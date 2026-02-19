@@ -98,7 +98,9 @@ export function TariffManager() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={handleSync} disabled={loading}>Sync Tariff Keys</Button>
+        <Button onClick={handleSync} disabled={loading}>
+          Sync Tariff Keys
+        </Button>
         <Input
           value={newClass}
           onChange={(e) => setNewClass(e.target.value)}
@@ -142,7 +144,9 @@ export function TariffManager() {
                         const value = Number(e.target.value);
                         setRows((prev) =>
                           prev.map((item) =>
-                            item.id === row.id ? { ...item, tariffRate: Number.isFinite(value) ? value : 0 } : item
+                            item.id === row.id
+                              ? { ...item, tariffRate: Number.isFinite(value) ? value : 0 }
+                              : item
                           )
                         );
                       }}
@@ -155,7 +159,11 @@ export function TariffManager() {
                       value={row.notes || ''}
                       onChange={(e) => {
                         const value = e.target.value;
-                        setRows((prev) => prev.map((item) => (item.id === row.id ? { ...item, notes: value } : item)));
+                        setRows((prev) =>
+                          prev.map((item) =>
+                            item.id === row.id ? { ...item, notes: value } : item
+                          )
+                        );
                       }}
                       className="h-8"
                     />

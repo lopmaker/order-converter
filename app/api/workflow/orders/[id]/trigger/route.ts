@@ -18,9 +18,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 type TriggerAction = 'GENERATE_SHIPPING_DOC' | 'START_TRANSIT' | 'MARK_DELIVERED';
 
-
-
-function getVendorAmount(items: Array<{ quantity: number | null; vendorUnitPrice: string | null }>): number {
+function getVendorAmount(
+  items: Array<{ quantity: number | null; vendorUnitPrice: string | null }>
+): number {
   return round2(
     items.reduce(
       (sum, item) =>
@@ -87,11 +87,14 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     if (action === 'GENERATE_SHIPPING_DOC') {
       const existingDoc = containerId
         ? await db.query.shippingDocuments.findFirst({
-          where: and(eq(shippingDocuments.orderId, id), eq(shippingDocuments.containerId, containerId)),
-        })
+            where: and(
+              eq(shippingDocuments.orderId, id),
+              eq(shippingDocuments.containerId, containerId)
+            ),
+          })
         : await db.query.shippingDocuments.findFirst({
-          where: eq(shippingDocuments.orderId, id),
-        });
+            where: eq(shippingDocuments.orderId, id),
+          });
 
       if (existingDoc) {
         result.created = { shippingDocument: false };
@@ -116,21 +119,21 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
         result.shippingDocument = shippingDoc;
       }
 
-      await db
-        .update(orders)
-        .set({ workflowStatus: 'SHIPPING_DOC_SENT' })
-        .where(eq(orders.id, id));
+      await db.update(orders).set({ workflowStatus: 'SHIPPING_DOC_SENT' }).where(eq(orders.id, id));
       result.updated = { workflowStatus: 'SHIPPING_DOC_SENT' };
     }
 
     if (action === 'START_TRANSIT') {
       const existingDoc = containerId
         ? await db.query.shippingDocuments.findFirst({
-          where: and(eq(shippingDocuments.orderId, id), eq(shippingDocuments.containerId, containerId)),
-        })
+            where: and(
+              eq(shippingDocuments.orderId, id),
+              eq(shippingDocuments.containerId, containerId)
+            ),
+          })
         : await db.query.shippingDocuments.findFirst({
-          where: eq(shippingDocuments.orderId, id),
-        });
+            where: eq(shippingDocuments.orderId, id),
+          });
 
       let shippingDoc = existingDoc;
       if (!shippingDoc) {
@@ -209,10 +212,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           .where(eq(containers.id, containerId));
       }
 
-      await db
-        .update(orders)
-        .set({ workflowStatus: 'IN_TRANSIT' })
-        .where(eq(orders.id, id));
+      await db.update(orders).set({ workflowStatus: 'IN_TRANSIT' }).where(eq(orders.id, id));
 
       result.created = {
         shippingDocument: !existingDoc,

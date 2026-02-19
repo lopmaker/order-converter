@@ -18,8 +18,6 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 type RollbackAction = 'UNDO_MARK_DELIVERED' | 'UNDO_START_TRANSIT' | 'UNDO_SHIPPING_DOC';
 
-
-
 function normalizeAction(value: unknown): RollbackAction | null {
   if (value === 'UNDO_MARK_DELIVERED') return value;
   if (value === 'UNDO_START_TRANSIT') return value;
@@ -27,7 +25,10 @@ function normalizeAction(value: unknown): RollbackAction | null {
   return null;
 }
 
-async function deletePaymentsByTarget(targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL', targetIds: string[]) {
+async function deletePaymentsByTarget(
+  targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL',
+  targetIds: string[]
+) {
   if (targetIds.length === 0) return 0;
   const rows = await db
     .select({ id: payments.id })
@@ -51,7 +52,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     const action = normalizeAction(body.action);
     if (!action) {
       return NextResponse.json(
-        { error: 'action must be one of UNDO_MARK_DELIVERED, UNDO_START_TRANSIT, UNDO_SHIPPING_DOC' },
+        {
+          error: 'action must be one of UNDO_MARK_DELIVERED, UNDO_START_TRANSIT, UNDO_SHIPPING_DOC',
+        },
         { status: 400 }
       );
     }
@@ -59,13 +62,26 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     const order = await db.query.orders.findFirst({ where: eq(orders.id, id) });
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
-    const [shippingRows, allocationRows, invoiceRows, vendorRows, logisticsRows] = await Promise.all([
-      db.select({ id: shippingDocuments.id, containerId: shippingDocuments.containerId }).from(shippingDocuments).where(eq(shippingDocuments.orderId, id)),
-      db.select({ id: containerAllocations.id, containerId: containerAllocations.containerId }).from(containerAllocations).where(eq(containerAllocations.orderId, id)),
-      db.select({ id: commercialInvoices.id }).from(commercialInvoices).where(eq(commercialInvoices.orderId, id)),
-      db.select({ id: vendorBills.id }).from(vendorBills).where(eq(vendorBills.orderId, id)),
-      db.select({ id: logisticsBills.id, containerId: logisticsBills.containerId }).from(logisticsBills).where(eq(logisticsBills.orderId, id)),
-    ]);
+    const [shippingRows, allocationRows, invoiceRows, vendorRows, logisticsRows] =
+      await Promise.all([
+        db
+          .select({ id: shippingDocuments.id, containerId: shippingDocuments.containerId })
+          .from(shippingDocuments)
+          .where(eq(shippingDocuments.orderId, id)),
+        db
+          .select({ id: containerAllocations.id, containerId: containerAllocations.containerId })
+          .from(containerAllocations)
+          .where(eq(containerAllocations.orderId, id)),
+        db
+          .select({ id: commercialInvoices.id })
+          .from(commercialInvoices)
+          .where(eq(commercialInvoices.orderId, id)),
+        db.select({ id: vendorBills.id }).from(vendorBills).where(eq(vendorBills.orderId, id)),
+        db
+          .select({ id: logisticsBills.id, containerId: logisticsBills.containerId })
+          .from(logisticsBills)
+          .where(eq(logisticsBills.orderId, id)),
+      ]);
 
     const shippingIds = shippingRows.map((row) => row.id);
     const invoiceIds = invoiceRows.map((row) => row.id);
@@ -87,17 +103,18 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       payments: 0,
     };
 
-    if (action === 'UNDO_MARK_DELIVERED' || action === 'UNDO_START_TRANSIT' || action === 'UNDO_SHIPPING_DOC') {
+    if (
+      action === 'UNDO_MARK_DELIVERED' ||
+      action === 'UNDO_START_TRANSIT' ||
+      action === 'UNDO_SHIPPING_DOC'
+    ) {
       removed.payments += await deletePaymentsByTarget('LOGISTICS_BILL', logisticsIds);
       if (logisticsIds.length > 0) {
         await db.delete(logisticsBills).where(eq(logisticsBills.orderId, id));
         removed.logisticsBills = logisticsIds.length;
       }
 
-      await db
-        .update(orders)
-        .set({ deliveredAt: null, closedAt: null })
-        .where(eq(orders.id, id));
+      await db.update(orders).set({ deliveredAt: null, closedAt: null }).where(eq(orders.id, id));
     }
 
     if (action === 'UNDO_START_TRANSIT' || action === 'UNDO_SHIPPING_DOC') {

@@ -2,7 +2,10 @@ const DEFAULT_ORIGIN_COUNTRY = 'CN';
 const CHINA_SPECIAL_RATE = 0.075;
 
 const COUNTRY_KEYWORDS: Array<{ country: string; keywords: string[] }> = [
-  { country: 'CN', keywords: [' china', ' prc', 'shanghai', 'guangdong', 'fujian', 'zhejiang', 'shenzhen'] },
+  {
+    country: 'CN',
+    keywords: [' china', ' prc', 'shanghai', 'guangdong', 'fujian', 'zhejiang', 'shenzhen'],
+  },
   { country: 'VN', keywords: [' vietnam', 'ho chi minh', 'hanoi'] },
   { country: 'BD', keywords: [' bangladesh', 'dhaka'] },
   { country: 'IN', keywords: [' india', 'mumbai', 'delhi'] },
@@ -47,7 +50,10 @@ function getProductType(description: string): string {
   return 'apparel';
 }
 
-function parseCountryFromTariffKey(normalizedTariffKey: string): { country: string; baseKey: string } {
+function parseCountryFromTariffKey(normalizedTariffKey: string): {
+  country: string;
+  baseKey: string;
+} {
   const parts = normalizedTariffKey
     .split('|')
     .map((part) => normalizeSpaces(part.toLowerCase()))
@@ -75,7 +81,10 @@ export function normalizeProductClass(productClass: string): string {
   return normalizeTariffKey(productClass);
 }
 
-export function inferOriginCountry(supplierName?: string | null, supplierAddress?: string | null): string {
+export function inferOriginCountry(
+  supplierName?: string | null,
+  supplierAddress?: string | null
+): string {
   const haystack = ` ${supplierName || ''} ${supplierAddress || ''}`.toLowerCase();
   for (const item of COUNTRY_KEYWORDS) {
     if (item.keywords.some((keyword) => haystack.includes(keyword))) {
@@ -135,7 +144,9 @@ export function deriveTariffKey(input: {
 }
 
 function getDefaultBaseRate(baseTariffKey: string): number {
-  const [category = 'apparel', fabricBucket = 'mixed'] = baseTariffKey.split('|').map((s) => normalizeSpaces(s));
+  const [category = 'apparel', fabricBucket = 'mixed'] = baseTariffKey
+    .split('|')
+    .map((s) => normalizeSpaces(s));
 
   if (category.includes('tee') || category.includes('tank')) {
     if (fabricBucket === 'cotton-rich') return 0.25;
@@ -176,7 +187,10 @@ export function applyOriginSpecialRate(baseRate: number, originCountry?: string 
   return round4(clampRate(baseRate));
 }
 
-export function defaultTariffRateByTariffKey(tariffKey: string, originCountry?: string | null): number {
+export function defaultTariffRateByTariffKey(
+  tariffKey: string,
+  originCountry?: string | null
+): number {
   const normalized = normalizeTariffKey(tariffKey);
   const parsed = parseCountryFromTariffKey(normalized);
   const resolvedOrigin = (originCountry || parsed.country || DEFAULT_ORIGIN_COUNTRY).toUpperCase();
@@ -189,7 +203,10 @@ export function defaultTariffRateByProductClass(productClass: string): number {
   return defaultTariffRateByTariffKey(productClass, DEFAULT_ORIGIN_COUNTRY);
 }
 
-export function buildTariffLookupKeys(baseTariffKey: string, originCountry?: string | null): string[] {
+export function buildTariffLookupKeys(
+  baseTariffKey: string,
+  originCountry?: string | null
+): string[] {
   const normalizedBase = normalizeRateKey(baseTariffKey);
   const country = (originCountry || DEFAULT_ORIGIN_COUNTRY).toUpperCase();
   const keys = [`${country.toLowerCase()} | ${normalizedBase}`, normalizedBase];

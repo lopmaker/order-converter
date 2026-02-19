@@ -148,8 +148,6 @@ type RollbackAction = 'UNDO_MARK_DELIVERED' | 'UNDO_START_TRANSIT' | 'UNDO_SHIPP
 
 const AUTO_CONTAINER = 'AUTO';
 
-
-
 function statusBadgeVariant(
   status: string | null
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -189,7 +187,9 @@ function nextStepHints(
   if (!order) return [];
   const hints: string[] = [];
   if (allocations.length === 0) {
-    hints.push('Allocate this order to at least one container (optional now, recommended before transit).');
+    hints.push(
+      'Allocate this order to at least one container (optional now, recommended before transit).'
+    );
   }
   if (shippingDocs.length === 0) {
     hints.push('Send shipping document to create 3PL shipment instruction.');
@@ -264,26 +264,34 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const [orderRes, summaryRes, docsRes, allocRes, containerRes, timelineRes, paymentsRes] = await Promise.all([
-        fetch(`/api/orders/${orderId}`, { cache: 'no-store' }),
-        fetch(`/api/finance/orders/${orderId}/summary`, { cache: 'no-store' }),
-        fetch(`/api/logistics/shipping-docs?orderId=${orderId}`, { cache: 'no-store' }),
-        fetch(`/api/logistics/allocations?orderId=${orderId}`, { cache: 'no-store' }),
-        fetch('/api/logistics/containers', { cache: 'no-store' }),
-        fetch(`/api/orders/${orderId}/timeline`, { cache: 'no-store' }),
-        fetch(`/api/finance/payments?orderId=${orderId}`, { cache: 'no-store' }),
-      ]);
-
-      const [orderJson, summaryJson, docsJson, allocJson, containerJson, timelineJson, paymentsJson] =
+      const [orderRes, summaryRes, docsRes, allocRes, containerRes, timelineRes, paymentsRes] =
         await Promise.all([
-          orderRes.json().catch(() => ({})),
-          summaryRes.json().catch(() => ({})),
-          docsRes.json().catch(() => ({})),
-          allocRes.json().catch(() => ({})),
-          containerRes.json().catch(() => ({})),
-          timelineRes.json().catch(() => ({})),
-          paymentsRes.json().catch(() => ({})),
+          fetch(`/api/orders/${orderId}`, { cache: 'no-store' }),
+          fetch(`/api/finance/orders/${orderId}/summary`, { cache: 'no-store' }),
+          fetch(`/api/logistics/shipping-docs?orderId=${orderId}`, { cache: 'no-store' }),
+          fetch(`/api/logistics/allocations?orderId=${orderId}`, { cache: 'no-store' }),
+          fetch('/api/logistics/containers', { cache: 'no-store' }),
+          fetch(`/api/orders/${orderId}/timeline`, { cache: 'no-store' }),
+          fetch(`/api/finance/payments?orderId=${orderId}`, { cache: 'no-store' }),
         ]);
+
+      const [
+        orderJson,
+        summaryJson,
+        docsJson,
+        allocJson,
+        containerJson,
+        timelineJson,
+        paymentsJson,
+      ] = await Promise.all([
+        orderRes.json().catch(() => ({})),
+        summaryRes.json().catch(() => ({})),
+        docsRes.json().catch(() => ({})),
+        allocRes.json().catch(() => ({})),
+        containerRes.json().catch(() => ({})),
+        timelineRes.json().catch(() => ({})),
+        paymentsRes.json().catch(() => ({})),
+      ]);
 
       if (!orderRes.ok) {
         throw new Error(orderJson.error || 'Failed to load order');
@@ -397,7 +405,10 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       const res = await fetch('/api/finance/logistics-bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, containerId: containerActionId === AUTO_CONTAINER ? undefined : containerActionId }),
+        body: JSON.stringify({
+          orderId,
+          containerId: containerActionId === AUTO_CONTAINER ? undefined : containerActionId,
+        }),
       });
       if (!res.ok) throw new Error(await readError(res, 'Failed to create 3PL AP'));
     });
@@ -463,7 +474,12 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       title: 'Edit Shipping Document',
       fields: [
         { key: 'status', label: 'Status', defaultValue: row.status || 'ISSUED' },
-        { key: 'issueDate', label: 'Issue date (YYYY-MM-DD)', defaultValue: row.issueDate ? new Date(row.issueDate).toISOString().slice(0, 10) : '', placeholder: 'empty to clear' },
+        {
+          key: 'issueDate',
+          label: 'Issue date (YYYY-MM-DD)',
+          defaultValue: row.issueDate ? new Date(row.issueDate).toISOString().slice(0, 10) : '',
+          placeholder: 'empty to clear',
+        },
       ],
     });
     if (!result) return;
@@ -485,8 +501,18 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     const result = await openPrompt({
       title: 'Edit Allocation',
       fields: [
-        { key: 'qty', label: 'Allocated Qty', defaultValue: row.allocatedQty !== null ? String(row.allocatedQty) : '', placeholder: 'empty to clear' },
-        { key: 'amount', label: 'Allocated Amount', defaultValue: row.allocatedAmount || '', placeholder: 'empty to clear' },
+        {
+          key: 'qty',
+          label: 'Allocated Qty',
+          defaultValue: row.allocatedQty !== null ? String(row.allocatedQty) : '',
+          placeholder: 'empty to clear',
+        },
+        {
+          key: 'amount',
+          label: 'Allocated Amount',
+          defaultValue: row.allocatedAmount || '',
+          placeholder: 'empty to clear',
+        },
       ],
     });
     if (!result) return;
@@ -512,7 +538,12 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       title: 'Edit Document',
       fields: [
         { key: 'amount', label: 'Amount', defaultValue: String(doc.amount) },
-        { key: 'dueDate', label: 'Due date (YYYY-MM-DD)', defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '', placeholder: 'empty to clear' },
+        {
+          key: 'dueDate',
+          label: 'Due date (YYYY-MM-DD)',
+          defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '',
+          placeholder: 'empty to clear',
+        },
       ],
     });
     if (!result) return;
@@ -547,7 +578,12 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       title: 'Edit Payment',
       fields: [
         { key: 'amount', label: 'Payment amount', defaultValue: String(num(row.amount)) },
-        { key: 'date', label: 'Payment date (YYYY-MM-DD)', defaultValue: row.paymentDate ? new Date(row.paymentDate).toISOString().slice(0, 10) : '', placeholder: 'empty to clear' },
+        {
+          key: 'date',
+          label: 'Payment date (YYYY-MM-DD)',
+          defaultValue: row.paymentDate ? new Date(row.paymentDate).toISOString().slice(0, 10) : '',
+          placeholder: 'empty to clear',
+        },
         { key: 'method', label: 'Method', defaultValue: row.method || '', placeholder: 'optional' },
       ],
     });
@@ -592,7 +628,10 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     return {
       qty: items.reduce((sum, item) => sum + num(item.quantity), 0),
       revenue: items.reduce((sum, item) => sum + num(item.total), 0),
-      vendorCost: items.reduce((sum, item) => sum + num(item.vendorUnitPrice) * num(item.quantity), 0),
+      vendorCost: items.reduce(
+        (sum, item) => sum + num(item.vendorUnitPrice) * num(item.quantity),
+        0
+      ),
       duty: items.reduce((sum, item) => sum + num(item.estimatedDutyCost), 0),
       est3pl: items.reduce((sum, item) => sum + num(item.estimated3plCost), 0),
       margin: items.reduce((sum, item) => sum + num(item.estimatedMargin), 0),
@@ -607,7 +646,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border p-4 text-sm text-muted-foreground">Loading workspace...</div>
+        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+          Loading workspace...
+        </div>
       </div>
     );
   }
@@ -627,9 +668,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   if (!order) {
     return (
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-        Order not found.
-      </div>
+      <div className="rounded-lg border p-4 text-sm text-muted-foreground">Order not found.</div>
     );
   }
 
@@ -725,9 +764,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
         <CardHeader className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
-              <CardTitle className="text-2xl">
-                Order Workspace: {order.vpoNumber}
-              </CardTitle>
+              <CardTitle className="text-2xl">Order Workspace: {order.vpoNumber}</CardTitle>
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 <span>SO: {order.soReference || '-'}</span>
                 <span>Customer: {order.customerName || '-'}</span>
@@ -785,7 +822,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
             <Button
               variant="outline"
               disabled={busyAction === 'REFRESH'}
-              onClick={() => runAction('REFRESH', async () => { })}
+              onClick={() => runAction('REFRESH', async () => {})}
             >
               {busyAction === 'REFRESH' ? 'Refreshing...' : 'Refresh'}
             </Button>
@@ -898,7 +935,10 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
               </CardHeader>
               <CardContent className="space-y-2">
                 {hints.map((hint, index) => (
-                  <div key={`${hint}-${index}`} className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div
+                    key={`${hint}-${index}`}
+                    className="rounded-md border bg-muted/30 p-2 text-xs"
+                  >
                     {index + 1}. {hint}
                   </div>
                 ))}
@@ -930,7 +970,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                 <p className="text-xl font-semibold">
                   {money(
                     (financeSummary?.totals.vendorOutstanding || 0) +
-                    (financeSummary?.totals.logisticsOutstanding || 0)
+                      (financeSummary?.totals.logisticsOutstanding || 0)
                   )}
                 </p>
               </div>
@@ -982,10 +1022,16 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                             <TableCell className="text-right">{qty}</TableCell>
                             <TableCell className="text-right">{money(customerUnit)}</TableCell>
                             <TableCell className="text-right">{money(vendorUnit)}</TableCell>
-                            <TableCell className="text-right">{money(num(item.estimatedDutyCost))}</TableCell>
-                            <TableCell className="text-right">{money(num(item.estimated3plCost))}</TableCell>
                             <TableCell className="text-right">
-                              <span className={margin >= 0 ? 'text-emerald-600' : 'text-destructive'}>
+                              {money(num(item.estimatedDutyCost))}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {money(num(item.estimated3plCost))}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span
+                                className={margin >= 0 ? 'text-emerald-600' : 'text-destructive'}
+                              >
                                 {money(margin)}
                               </span>
                             </TableCell>
@@ -1043,7 +1089,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                         </TableCell>
                         <TableCell>{formatDate(row.issueDate)}</TableCell>
                         <TableCell>
-                          <Badge variant={statusBadgeVariant(row.status)}>{row.status || '-'}</Badge>
+                          <Badge variant={statusBadgeVariant(row.status)}>
+                            {row.status || '-'}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -1061,7 +1109,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                               disabled={busyAction === `DELETE_SHIPPING_DOC_${row.id}`}
                               onClick={() => deleteShippingDoc(row.id)}
                             >
-                              {busyAction === `DELETE_SHIPPING_DOC_${row.id}` ? 'Deleting...' : 'Delete'}
+                              {busyAction === `DELETE_SHIPPING_DOC_${row.id}`
+                                ? 'Deleting...'
+                                : 'Delete'}
                             </Button>
                           </div>
                         </TableCell>
@@ -1122,7 +1172,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                               disabled={busyAction === `DELETE_ALLOCATION_${row.id}`}
                               onClick={() => deleteAllocation(row.id)}
                             >
-                              {busyAction === `DELETE_ALLOCATION_${row.id}` ? 'Deleting...' : 'Delete'}
+                              {busyAction === `DELETE_ALLOCATION_${row.id}`
+                                ? 'Deleting...'
+                                : 'Delete'}
                             </Button>
                           </div>
                         </TableCell>
@@ -1163,7 +1215,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                         <TableCell className="font-medium">{row.containerNo}</TableCell>
                         <TableCell>{row.vesselName || '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={statusBadgeVariant(row.status)}>{row.status || '-'}</Badge>
+                          <Badge variant={statusBadgeVariant(row.status)}>
+                            {row.status || '-'}
+                          </Badge>
                         </TableCell>
                         <TableCell>{formatDate(row.atd)}</TableCell>
                         <TableCell>{formatDate(row.eta)}</TableCell>
@@ -1179,11 +1233,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
         <TabsContent value="finance" className="space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
-            <Button
-              variant="outline"
-              disabled={busyAction === 'CREATE_AR'}
-              onClick={createAr}
-            >
+            <Button variant="outline" disabled={busyAction === 'CREATE_AR'} onClick={createAr}>
               {busyAction === 'CREATE_AR' ? 'Creating...' : 'Create AR'}
             </Button>
             <Button
@@ -1320,7 +1370,10 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                 </div>
               ) : (
                 timelineEvents.map((event, index) => (
-                  <div key={event.id} className="grid grid-cols-[140px_1fr] gap-3 rounded-lg border p-3">
+                  <div
+                    key={event.id}
+                    className="grid grid-cols-[140px_1fr] gap-3 rounded-lg border p-3"
+                  >
                     <div className="text-xs text-muted-foreground">
                       <div>{event.at ? new Date(event.at).toLocaleDateString() : '-'}</div>
                       <div>{event.at ? new Date(event.at).toLocaleTimeString() : '-'}</div>

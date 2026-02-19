@@ -1,0 +1,60 @@
+{
+    "HomePage": {
+        "title": "Instantly extract data from Purchase Orders",
+        "subtitle": "Upload your PDF, extract line items automatically, and sync directly to your sales dashboard.",
+        "uploadTitle": "Upload Order PDFs",
+        "uploadSubtitle": "Drag and drop multiple PO files here, or click to browse.",
+        "selectFiles": "Select Files",
+        "viewDashboard": "View Sales Dashboard",
+        "docs": "Docs",
+        "secureProcessing": "Secure Processing",
+        "aiPowered": "AI-Powered",
+        "processedOrders": "Processed Orders",
+        "processing": "Processing...",
+        "order": "Order",
+        "uploadMore": "Upload More"
+    },
+    "Dashboard": {
+        "title": "Sales Dashboard",
+        "overview": "Overview",
+        "tariffs": "Tariffs",
+        "logistics": "Logistics",
+        "finance": "Finance",
+        "backToConverter": "Back to Converter",
+        "totalSales": "Total Sales",
+        "estMargin": "Est. Margin",
+        "totalOrders": "Total Orders",
+        "recentActivity": "Recent Activity",
+        "allTimeRevenue": "All time revenue",
+        "includesDuty": "Includes duty + est. 3PL",
+        "processedAndConfirmed": "Processed & Confirmed",
+        "today": "Today",
+        "liveBusinessFlow": "Live Business Flow",
+        "realTimeStatus": "Real-time status counts and document progress from your database.",
+        "recentOrders": "Recent Orders"
+    },
+    "Tariffs": {
+        "title": "Tariff Sync Table",
+        "settings": "Product Class Tariff Settings"
+    },
+    "Logistics": {
+        "title": "Logistics Workflow",
+        "cardTitle": "Containers, Allocation, Shipping Doc"
+    },
+    "Finance": {
+        "title": "Finance Workflow",
+        "cardTitle": "AR / AP / Settlement"
+    },
+    "Common": {
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "actions": "Actions",
+        "status": "Status",
+        "date": "Date"
+    }
+}

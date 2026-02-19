@@ -64,8 +64,8 @@ export function addDays(baseDate: Date, days: number): Date {
   return next;
 }
 
-export function sumPaidAmount(payments: Array<{ amount: string | number | null | undefined }>): number {
-  return round2(
-    payments.reduce((acc, payment) => acc + parseDecimalInput(payment.amount, 0), 0)
-  );
+export function sumPaidAmount(
+  payments: Array<{ amount: string | number | null | undefined }>
+): number {
+  return round2(payments.reduce((acc, payment) => acc + parseDecimalInput(payment.amount, 0), 0));
 }

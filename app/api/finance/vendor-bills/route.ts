@@ -10,7 +10,10 @@ function getErrorMessage(error: unknown): string {
 }
 
 function createDefaultCode(prefix: string): string {
-  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:TZ.]/g, '')
+    .slice(0, 14);
   return `${prefix}-${stamp}`;
 }
 
@@ -18,7 +21,11 @@ export async function GET(req: NextRequest) {
   try {
     const orderId = req.nextUrl.searchParams.get('orderId');
     const data = orderId
-      ? await db.select().from(vendorBills).where(eq(vendorBills.orderId, orderId)).orderBy(desc(vendorBills.createdAt))
+      ? await db
+          .select()
+          .from(vendorBills)
+          .where(eq(vendorBills.orderId, orderId))
+          .orderBy(desc(vendorBills.createdAt))
       : await db.select().from(vendorBills).orderBy(desc(vendorBills.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -59,7 +66,8 @@ export async function POST(req: NextRequest) {
         .where(eq(orderItems.orderId, body.orderId));
       amount = round2(
         items.reduce(
-          (sum, item) => sum + parseDecimalInput(item.qty, 0) * parseDecimalInput(item.vendorUnitPrice, 0),
+          (sum, item) =>
+            sum + parseDecimalInput(item.qty, 0) * parseDecimalInput(item.vendorUnitPrice, 0),
           0
         )
       );

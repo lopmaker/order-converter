@@ -72,8 +72,6 @@ interface LogisticsBillRow {
   status: string | null;
 }
 
-
-
 export function FinanceManager() {
   const [orders, setOrders] = useState<OrderOption[]>([]);
   const [containers, setContainers] = useState<ContainerOption[]>([]);
@@ -256,7 +254,10 @@ export function FinanceManager() {
     });
   };
 
-  const payOutstanding = async (targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL', doc: DocSummary) => {
+  const payOutstanding = async (
+    targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL',
+    doc: DocSummary
+  ) => {
     if (doc.outstanding <= 0) return;
     await runAction(`PAY_${targetType}_${doc.id}`, async () => {
       await fetch('/api/finance/payments', {
@@ -276,7 +277,11 @@ export function FinanceManager() {
     const result = await openPrompt({
       title: 'Pay 3PL Bill',
       fields: [
-        { key: 'amount', label: 'Payment amount', defaultValue: amountDue > 0 ? String(amountDue) : '' },
+        {
+          key: 'amount',
+          label: 'Payment amount',
+          defaultValue: amountDue > 0 ? String(amountDue) : '',
+        },
       ],
     });
     if (!result) return;
@@ -304,7 +309,12 @@ export function FinanceManager() {
       title: 'Edit 3PL Bill',
       fields: [
         { key: 'amount', label: '3PL bill amount', defaultValue: String(Number(doc.amount || 0)) },
-        { key: 'dueDate', label: 'Due date (YYYY-MM-DD)', defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '', placeholder: 'optional' },
+        {
+          key: 'dueDate',
+          label: 'Due date (YYYY-MM-DD)',
+          defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '',
+          placeholder: 'optional',
+        },
       ],
     });
     if (!result) return;
@@ -455,9 +465,15 @@ export function FinanceManager() {
 
       {selectedOrder && (
         <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-          Current Order: <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
-          <span className="font-medium text-foreground">{selectedOrder.workflowStatus || 'PO_UPLOADED'}</span> | Sales:{' '}
-          <span className="font-medium text-foreground">${Number(selectedOrder.totalAmount || 0).toFixed(2)}</span>
+          Current Order:{' '}
+          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
+          <span className="font-medium text-foreground">
+            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
+          </span>{' '}
+          | Sales:{' '}
+          <span className="font-medium text-foreground">
+            ${Number(selectedOrder.totalAmount || 0).toFixed(2)}
+          </span>
         </div>
       )}
 
@@ -487,7 +503,11 @@ export function FinanceManager() {
 
       {summary && (
         <div className="space-y-4">
-          <DocTable title="Commercial Invoice (AR)" docs={summary.invoices} targetType="CUSTOMER_INVOICE" />
+          <DocTable
+            title="Commercial Invoice (AR)"
+            docs={summary.invoices}
+            targetType="CUSTOMER_INVOICE"
+          />
           <DocTable title="Vendor Bill (AP)" docs={summary.vendorBills} targetType="VENDOR_BILL" />
           <Card>
             <CardHeader>
@@ -516,9 +536,13 @@ export function FinanceManager() {
                     logisticsBills.map((doc) => (
                       <TableRow key={doc.id}>
                         <TableCell className="font-medium">{doc.billNo}</TableCell>
-                        <TableCell>{containers.find((c) => c.id === doc.containerId)?.containerNo || '-'}</TableCell>
+                        <TableCell>
+                          {containers.find((c) => c.id === doc.containerId)?.containerNo || '-'}
+                        </TableCell>
                         <TableCell>{formatDate(doc.dueDate)}</TableCell>
-                        <TableCell className="text-right">{money(Number(doc.amount || 0))}</TableCell>
+                        <TableCell className="text-right">
+                          {money(Number(doc.amount || 0))}
+                        </TableCell>
                         <TableCell>{doc.status || 'OPEN'}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
