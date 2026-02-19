@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Fragment } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -38,6 +40,7 @@ interface OrderItem {
   estimatedMargin: string | null;
   collection: string | null;
   material: string | null;
+  productClass: string | null;
 }
 
 interface OrderDetails {
@@ -609,6 +612,15 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     });
   };
 
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    const next = new Set(expandedItems);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedItems(next);
+  };
+
   const rollbackWorkflow = async (action: RollbackAction, message: string) => {
     const ok = window.confirm(message);
     if (!ok) return;
@@ -987,6 +999,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]"></TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Collection</TableHead>
@@ -1009,33 +1022,121 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                   ) : (
                     <>
                       {order.items.map((item) => {
-                        const qty = num(item.quantity);
+                        const qty = num(item.quantity) || 1;
                         const customerUnit = num(item.customerUnitPrice);
                         const vendorUnit = num(item.vendorUnitPrice);
                         const margin = num(item.estimatedMargin);
+                        const dutyCost = num(item.estimatedDutyCost);
+                        const handlingCost = dutyCost * 0.4;
+                        const shipCost = 0.1 * qty;
+                        const total3pl = num(item.estimated3plCost);
+
+                        const isExpanded = expandedItems.has(item.id);
+
                         return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.productCode || '-'}</TableCell>
-                            <TableCell>{item.description || '-'}</TableCell>
-                            <TableCell>{item.collection || '-'}</TableCell>
-                            <TableCell>{item.material || '-'}</TableCell>
-                            <TableCell className="text-right">{qty}</TableCell>
-                            <TableCell className="text-right">{money(customerUnit)}</TableCell>
-                            <TableCell className="text-right">{money(vendorUnit)}</TableCell>
-                            <TableCell className="text-right">
-                              {money(num(item.estimatedDutyCost))}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {money(num(item.estimated3plCost))}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span
-                                className={margin >= 0 ? 'text-emerald-600' : 'text-destructive'}
-                              >
-                                {money(margin)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
+                          <Fragment key={item.id}>
+                            <TableRow className={isExpanded ? 'border-b-0 bg-muted/50' : ''}>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => toggleExpand(item.id)}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </TableCell>
+                              <TableCell className="font-medium">{item.productCode || '-'}</TableCell>
+                              <TableCell>{item.description || '-'}</TableCell>
+                              <TableCell>{item.collection || '-'}</TableCell>
+                              <TableCell>{item.material || '-'}</TableCell>
+                              <TableCell className="text-right">{num(item.quantity)}</TableCell>
+                              <TableCell className="text-right">{money(customerUnit)}</TableCell>
+                              <TableCell className="text-right">{money(vendorUnit)}</TableCell>
+                              <TableCell className="text-right">{money(dutyCost)}</TableCell>
+                              <TableCell className="text-right">{money(total3pl)}</TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={margin >= 0 ? 'text-emerald-600' : 'text-destructive'}
+                                >
+                                  {money(margin)}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow>
+                                <TableCell colSpan={11} className="bg-muted/10 p-0">
+                                  <div className="grid gap-4 border-b p-4 md:grid-cols-2 lg:grid-cols-4 bg-slate-50/50">
+                                    <div className="space-y-1">
+                                      <span className="text-xs font-medium text-muted-foreground">
+                                        Tariff Info
+                                      </span>
+                                      <div className="text-sm">
+                                        <div>Rate: {(num(item.tariffRate) * 100).toFixed(1)}%</div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {item.productClass || '-'}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <span className="text-xs font-medium text-muted-foreground">
+                                        Duty Breakdown
+                                      </span>
+                                      <div className="text-sm">
+                                        <div className="flex justify-between">
+                                          <span>Duty/pc:</span>
+                                          <span className="font-medium">
+                                            {money(dutyCost / qty)}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                          <span>Total Duty:</span>
+                                          <span>{money(dutyCost)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="col-span-2 space-y-1 rounded-md border bg-background p-2">
+                                      <span className="text-xs font-medium text-muted-foreground">
+                                        3PL Cost Structure (Per Unit)
+                                      </span>
+                                      <div className="grid grid-cols-3 gap-4 text-sm">
+                                        <div>
+                                          <div className="text-[10px] text-muted-foreground uppercase">
+                                            3PL Duty (Handling)
+                                          </div>
+                                          <div className="font-medium text-blue-600">
+                                            {money(handlingCost / qty)}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[10px] text-muted-foreground uppercase">
+                                            3PL Ship ($0.10)
+                                          </div>
+                                          <div className="font-medium text-blue-600">
+                                            {money(shipCost / qty)}
+                                          </div>
+                                        </div>
+                                        <div className="border-l pl-4">
+                                          <div className="text-[10px] text-muted-foreground uppercase font-bold">
+                                            3PL Total
+                                          </div>
+                                          <div className="font-bold text-blue-700">
+                                            {money(total3pl / qty)}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </Fragment>
                         );
                       })}
                       <TableRow className="bg-muted/30 font-medium">

@@ -48,45 +48,68 @@ async function getRecentOrders(page: number, pageSize: number): Promise<{ orders
 
 async function getStats() {
   try {
-    const [orderStats, shippingDocStats, commercialStats, vendorStats, logisticsStats, paymentStats, salesByMonthStats] =
-      await Promise.all([
-        db
-          .select({
-            totalSales: sql<number>`sum(CAST(${orders.totalAmount} AS NUMERIC))`.mapWith(Number),
-            totalEstimatedMargin: sql<number>`sum(CAST(${orders.estimatedMargin} AS NUMERIC))`.mapWith(Number),
-            totalOrders: sql<number>`count(*)`.mapWith(Number),
-            stageCounts: sql<Record<string, number>>`jsonb_object_agg(${orders.workflowStatus}, count(*)) FILTER (WHERE ${orders.workflowStatus} IS NOT NULL)`.as('stage_counts'),
-          })
-          .from(orders),
-        db.select({ count: sql<number>`count(*)` }).from(shippingDocuments),
-        db
-          .select({ status: commercialInvoices.status, count: sql<number>`count(*)` })
-          .from(commercialInvoices)
-          .groupBy(commercialInvoices.status),
-        db
-          .select({ status: vendorBills.status, count: sql<number>`count(*)` })
-          .from(vendorBills)
-          .groupBy(vendorBills.status),
-        db
-          .select({ status: logisticsBills.status, count: sql<number>`count(*)` })
-          .from(logisticsBills)
-          .groupBy(logisticsBills.status),
-        db.select({ count: sql<number>`count(*)` }).from(payments),
-        db
-          .select({
-            month: sql<string>`TO_CHAR(${orders.createdAt}, 'Mon')`,
-            total: sql<number>`sum(CAST(${orders.totalAmount} AS NUMERIC))`.mapWith(Number),
-          })
-          .from(orders)
-          .where(sql`${orders.createdAt} IS NOT NULL`)
-          .groupBy(sql`TO_CHAR(${orders.createdAt}, 'Mon')`)
-          .orderBy(sql`MIN(${orders.createdAt})`),
-      ]);
+    const [
+      salesAgg,
+      marginAgg,
+      countAgg,
+      stageAgg,
+      shippingDocStats,
+      commercialStats,
+      vendorStats,
+      logisticsStats,
+      paymentStats,
+      salesByMonthStats,
+    ] = await Promise.all([
+      db
+        .select({ total: sql<number>`sum(CAST(${orders.totalAmount} AS NUMERIC))`.mapWith(Number) })
+        .from(orders),
+      db
+        .select({
+          total: sql<number>`sum(CAST(${orders.estimatedMargin} AS NUMERIC))`.mapWith(Number),
+        })
+        .from(orders),
+      db.select({ count: sql<number>`count(*)` }).from(orders),
+      db
+        .select({
+          status: orders.workflowStatus,
+          count: sql<number>`count(*)`,
+        })
+        .from(orders)
+        .where(sql`${orders.workflowStatus} IS NOT NULL`)
+        .groupBy(orders.workflowStatus),
+      db.select({ count: sql<number>`count(*)` }).from(shippingDocuments),
+      db
+        .select({ status: commercialInvoices.status, count: sql<number>`count(*)` })
+        .from(commercialInvoices)
+        .groupBy(commercialInvoices.status),
+      db
+        .select({ status: vendorBills.status, count: sql<number>`count(*)` })
+        .from(vendorBills)
+        .groupBy(vendorBills.status),
+      db
+        .select({ status: logisticsBills.status, count: sql<number>`count(*)` })
+        .from(logisticsBills)
+        .groupBy(logisticsBills.status),
+      db.select({ count: sql<number>`count(*)` }).from(payments),
+      db
+        .select({
+          month: sql<string>`TO_CHAR(${orders.createdAt}, 'Mon')`,
+          total: sql<number>`sum(CAST(${orders.totalAmount} AS NUMERIC))`.mapWith(Number),
+        })
+        .from(orders)
+        .where(sql`${orders.createdAt} IS NOT NULL`)
+        .groupBy(sql`TO_CHAR(${orders.createdAt}, 'Mon')`)
+        .orderBy(sql`MIN(${orders.createdAt})`),
+    ]);
 
-    const totalSales = orderStats[0]?.totalSales || 0;
-    const totalEstimatedMargin = orderStats[0]?.totalEstimatedMargin || 0;
-    const totalOrders = orderStats[0]?.totalOrders || 0;
-    const stageCounts = orderStats[0]?.stageCounts || {};
+    const totalSales = salesAgg[0]?.total || 0;
+    const totalEstimatedMargin = marginAgg[0]?.total || 0;
+    const totalOrders = countAgg[0]?.count || 0;
+
+    const stageCounts: Record<string, number> = {};
+    stageAgg.forEach((row) => {
+      if (row.status) stageCounts[row.status] = row.count;
+    });
 
     const toBillStats = (rows: Array<{ status: string | null; count: number }>) => {
       return rows.reduce(
@@ -104,7 +127,7 @@ async function getStats() {
 
     const flowSnapshot: BusinessFlowSnapshot = {
       totalOrders,
-      stageCounts: stageCounts as Record<string, number>,
+      stageCounts,
       shippingDocs: shippingDocStats[0]?.count || 0,
       commercialInvoices: toBillStats(commercialStats),
       vendorBills: toBillStats(vendorStats),
