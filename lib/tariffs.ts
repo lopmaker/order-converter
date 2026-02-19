@@ -1,5 +1,12 @@
 const DEFAULT_ORIGIN_COUNTRY = 'CN';
-const CHINA_SPECIAL_RATE = 0.075;
+
+// China tariff add-ons (stacked on top of HTS base rate)
+// - 7.5%  → Section 301 existing tariff (knit apparel)
+// - 10.0% → Trump executive order (Feb 4, 2025, first tranche)
+// - 10.0% → Trump executive order (Feb 4, 2025, second tranche)
+const CHINA_SECTION_301_RATE = 0.075; // Section 301
+const CHINA_TRUMP_SURCHARGE = 0.20;  // 10% + 10% Feb 2025
+const CHINA_SPECIAL_RATE = CHINA_SECTION_301_RATE + CHINA_TRUMP_SURCHARGE; // total: 27.5%
 
 const COUNTRY_KEYWORDS: Array<{ country: string; keywords: string[] }> = [
   {
@@ -143,40 +150,48 @@ export function deriveTariffKey(input: {
   return normalizeTariffKey(`${category} | ${fabricBucket}`);
 }
 
+/**
+ * HTS base rates (before any Section 301 or executive-order surcharges).
+ * Reference: HTS Chapter 61 (knit apparel), Chapter 62 (woven).
+ *   6109.10 – Cotton knit tees/tanks:  16.5%
+ *   6110.20 – Cotton knit tops/hoodies: 16.5%
+ *   6104/6114 – Dresses/jackets:        16.5%
+ *   6103/6104 – Pants/shorts/leggings:  14.9% (cotton) / 14.9% (poly)
+ *   Various accessories:                ~6-14%
+ */
 function getDefaultBaseRate(baseTariffKey: string): number {
   const [category = 'apparel', fabricBucket = 'mixed'] = baseTariffKey
     .split('|')
     .map((s) => normalizeSpaces(s));
 
   if (category.includes('tee') || category.includes('tank')) {
-    if (fabricBucket === 'cotton-rich') return 0.25;
-    if (fabricBucket === 'poly-rich') return 0.22;
-    return 0.24;
+    // HTS 6109.10 cotton = 16.5%, 6109.90 MMF = 16.5%
+    return 0.165;
   }
 
   if (category.includes('top') || category.includes('hoodie') || category.includes('sweatshirt')) {
-    if (fabricBucket === 'cotton-rich') return 0.26;
-    if (fabricBucket === 'poly-rich') return 0.23;
-    return 0.25;
+    // HTS 6110.20 cotton = 16.5%
+    return 0.165;
   }
 
   if (category.includes('dress') || category.includes('jacket')) {
-    if (fabricBucket === 'poly-rich') return 0.24;
-    return 0.26;
+    // HTS 6104 woven / 6112 = 16.5%
+    return 0.165;
   }
 
   if (category.includes('pants') || category.includes('shorts') || category.includes('leggings')) {
-    if (fabricBucket === 'poly-rich') return 0.21;
-    return 0.24;
+    // HTS 6103/6104 = 14.9%
+    return 0.149;
   }
 
   if (category.includes('accessory')) {
-    return 0.15;
+    // Mixed bucket — hats ~6.8%, bags ~4-17%
+    return 0.068;
   }
 
-  if (fabricBucket === 'poly-rich') return 0.22;
-  if (fabricBucket === 'cotton-rich') return 0.24;
-  return 0.23;
+  if (fabricBucket === 'poly-rich') return 0.165;
+  if (fabricBucket === 'cotton-rich') return 0.165;
+  return 0.165;
 }
 
 export function applyOriginSpecialRate(baseRate: number, originCountry?: string | null): number {

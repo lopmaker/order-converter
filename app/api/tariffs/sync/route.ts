@@ -69,6 +69,16 @@ export async function POST() {
       );
     }
 
+    // Also refresh rates on existing auto-synced rows so HTS / surcharge changes propagate
+    const autoSyncedRows = existingRows.filter((row) => row.source === 'sync');
+    for (const row of autoSyncedRows) {
+      const newRate = round4(defaultTariffRateByTariffKey(normalizeTariffKey(row.productClass)));
+      await db
+        .update(tariffRates)
+        .set({ tariffRate: newRate.toFixed(4) })
+        .where(eq(tariffRates.id, row.id));
+    }
+
     const refreshed = await db.select().from(tariffRates);
 
     return NextResponse.json({
