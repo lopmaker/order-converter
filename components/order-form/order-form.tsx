@@ -822,11 +822,10 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       sum + Number(item.customerUnitPrice ?? item.unitPrice ?? 0) * Number(item.totalQty || 0),
     0
   );
-  const totalEstimatedMargin = formData.items.reduce(
-    (sum, item) => sum + getEstimate(item).margin,
+  const totalVendorCost = formData.items.reduce(
+    (sum, item) => sum + Number(item.vendorUnitPrice || 0) * Number(item.totalQty || 0),
     0
   );
-  const totalEstimatedMarginRate = totalAmount > 0 ? totalEstimatedMargin / totalAmount : 0;
 
   // UI State for "Popups"
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -983,12 +982,12 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             </p>
           </div>
           <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-card p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Est. Margin</p>
-            <p className={`text-xl font-bold tabular-nums mt-0.5 ${totalEstimatedMargin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
-              ${totalEstimatedMargin.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Vendor Cost</p>
+            <p className="text-xl font-bold tabular-nums mt-0.5">
+              ${totalVendorCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {(totalEstimatedMarginRate * 100).toFixed(1)}% margin rate
+              ${(totalVendorCost / (totalQty || 1)).toFixed(2)} avg/pc
             </p>
           </div>
         </div>
@@ -1168,7 +1167,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                     <h3 className="text-sm font-semibold">Line Items</h3>
                     {formData.items.length > 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        {totalQty.toLocaleString()} pcs · ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        {totalQty.toLocaleString()} pcs · ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} sales
                       </Badge>
                     )}
                   </div>
@@ -1192,7 +1191,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                     {formData.items.map((item, idx) => (
                       <div key={idx} className="border rounded-xl overflow-hidden bg-card">
                         {/* Item Header Row */}
-                        <div className="grid grid-cols-[1fr_1.4fr_70px_90px_90px_110px_36px] gap-2 p-2.5 items-center text-sm">
+                        <div className="grid grid-cols-[1fr_1.5fr_90px_90px_90px_110px_36px] gap-2 p-2.5 items-center text-sm">
                           <Input
                             className="h-7 text-xs font-mono"
                             placeholder="Product Code"
@@ -1231,14 +1230,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             onChange={(e) => updateItem(idx, 'vendorUnitPrice', Number(e.target.value))}
                           />
                           <div className="text-xs text-right font-medium pr-1 tabular-nums">
-                            {(() => {
-                              const estimate = getEstimate(item);
-                              return (
-                                <span className={estimate.margin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}>
-                                  ${estimate.margin.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                                </span>
-                              );
-                            })()}
+                            ${(Number(item.vendorUnitPrice || 0) * Number(item.totalQty || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                           <Button
                             variant="ghost"
@@ -1353,10 +1345,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Margin:</span>{' '}
-                        <span className={`font-semibold tabular-nums ${totalEstimatedMargin >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
-                          ${totalEstimatedMargin.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
-                          ({(totalEstimatedMarginRate * 100).toFixed(1)}%)
+                        <span className="text-muted-foreground text-xs">Vendor Cost:</span>{' '}
+                        <span className="font-semibold tabular-nums">
+                          ${totalVendorCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>

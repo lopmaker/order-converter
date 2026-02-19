@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronDown } from 'lucide-react';
 
 type BillStats = {
   total: number;
@@ -118,71 +119,79 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
 
   return (
     <Card className="col-span-1">
-      <CardHeader>
-        <CardTitle>Live Business Flow</CardTitle>
-        <CardDescription>
-          Real-time status of orders and financial documents
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <Badge variant="outline">Total Orders: {snapshot.totalOrders}</Badge>
-          <Badge variant="outline">Shipping Docs: {snapshot.shippingDocs}</Badge>
-          <Badge variant="outline">Payments: {snapshot.payments}</Badge>
-          {otherStatusCount > 0 && (
-            <Badge variant="destructive">Other Status: {otherStatusCount}</Badge>
-          )}
-        </div>
-
-        {bottleneck && (
-          <div className="rounded-lg border bg-muted/20 p-3 text-xs">
-            <span className="font-semibold">Current Bottleneck:</span> {bottleneck.title} (
-            {bottleneck.count} orders)
-          </div>
-        )}
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          {FLOW_STAGES.map((stage) => {
-            const count = getCount(snapshot.stageCounts, stage.key);
-            return (
-              <div key={stage.key} className="rounded-lg border p-3">
-                <div className="mb-1 text-sm font-semibold">{stage.title}</div>
-                <div className="mb-2 text-[11px] text-muted-foreground">{stage.summary}</div>
-                <div className="mb-2">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {count} orders
-                  </Badge>
-                </div>
-                <div className="text-[11px] text-muted-foreground">Trigger: {stage.trigger}</div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="rounded-lg border">
-          <div className="grid grid-cols-12 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground">
-            <div className="col-span-3">Button</div>
-            <div className="col-span-3">Status Result</div>
-            <div className="col-span-6">Database Side Effect</div>
-          </div>
-          {ACTION_EFFECTS.map((row) => (
-            <div
-              key={row.action}
-              className="grid grid-cols-12 border-b last:border-b-0 px-3 py-2 text-xs"
-            >
-              <div className="col-span-3 font-medium">{row.action}</div>
-              <div className="col-span-3 text-muted-foreground">{row.result}</div>
-              <div className="col-span-6 text-muted-foreground">{row.writes}</div>
+      <details>
+        <summary className="cursor-pointer list-none">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Live Business Flow</CardTitle>
+              <CardDescription>
+                Real-time status of orders and financial documents
+              </CardDescription>
             </div>
-          ))}
-        </div>
+            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[open]>&]:rotate-180" />
+          </CardHeader>
+        </summary>
+        <CardContent className="space-y-6 pt-0">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge variant="outline">Total Orders: {snapshot.totalOrders}</Badge>
+            <Badge variant="outline">Shipping Docs: {snapshot.shippingDocs}</Badge>
+            <Badge variant="outline">Payments: {snapshot.payments}</Badge>
+            {otherStatusCount > 0 && (
+              <Badge variant="destructive">Other Status: {otherStatusCount}</Badge>
+            )}
+          </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <BillCard title="Commercial Invoice (AR)" stats={snapshot.commercialInvoices} />
-          <BillCard title="Vendor Bill (AP)" stats={snapshot.vendorBills} />
-          <BillCard title="3PL Bill (AP)" stats={snapshot.logisticsBills} />
-        </div>
-      </CardContent>
+          {bottleneck && (
+            <div className="rounded-lg border bg-muted/20 p-3 text-xs">
+              <span className="font-semibold">Current Bottleneck:</span> {bottleneck.title} (
+              {bottleneck.count} orders)
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {FLOW_STAGES.map((stage) => {
+              const count = getCount(snapshot.stageCounts, stage.key);
+              return (
+                <div key={stage.key} className="rounded-lg border p-3">
+                  <div className="mb-1 text-sm font-semibold">{stage.title}</div>
+                  <div className="mb-2 text-[11px] text-muted-foreground">{stage.summary}</div>
+                  <div className="mb-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {count} orders
+                    </Badge>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">Trigger: {stage.trigger}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-lg border">
+            <div className="grid grid-cols-12 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground">
+              <div className="col-span-3">Button</div>
+              <div className="col-span-3">Status Result</div>
+              <div className="col-span-6">Database Side Effect</div>
+            </div>
+            {ACTION_EFFECTS.map((row) => (
+              <div
+                key={row.action}
+                className="grid grid-cols-12 border-b last:border-b-0 px-3 py-2 text-xs"
+              >
+                <div className="col-span-3 font-medium">{row.action}</div>
+                <div className="col-span-3 text-muted-foreground">{row.result}</div>
+                <div className="col-span-6 text-muted-foreground">{row.writes}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <BillCard title="Commercial Invoice (AR)" stats={snapshot.commercialInvoices} />
+            <BillCard title="Vendor Bill (AP)" stats={snapshot.vendorBills} />
+            <BillCard title="3PL Bill (AP)" stats={snapshot.logisticsBills} />
+          </div>
+        </CardContent>
+      </details>
     </Card>
   );
 }
+

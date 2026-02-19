@@ -79,6 +79,13 @@ export async function POST(req: NextRequest) {
     const totalEstimatedMarginRate =
       totalRevenue > 0 ? round4(totalEstimatedMargin / totalRevenue) : 0;
 
+    // Helper: safely parse date strings to Date objects (or null)
+    const safeDateParse = (v: string | null | undefined): Date | null => {
+      if (!v) return null;
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
     const [insertedOrder] = await db
       .insert(orders)
       .values({
@@ -87,13 +94,13 @@ export async function POST(req: NextRequest) {
         customerAddress: data.customerAddress,
         supplierName: data.supplierName,
         supplierAddress: data.supplierAddress,
-        orderDate: data.orderDate,
+        orderDate: safeDateParse(data.orderDate),
         totalAmount: totalRevenue.toFixed(2),
         status: 'Confirmed',
         workflowStatus: 'PO_UPLOADED',
         soReference: data.soReference,
-        expShipDate: data.expShipDate,
-        cancelDate: data.cancelDate,
+        expShipDate: safeDateParse(data.expShipDate),
+        cancelDate: safeDateParse(data.cancelDate),
         shipTo: data.shipTo,
         shipVia: data.shipVia,
         shipmentTerms: data.shipmentTerms,
