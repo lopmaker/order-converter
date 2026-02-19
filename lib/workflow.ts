@@ -47,7 +47,7 @@ export function calculateEstimatedMargin(input: MarginInputs): MarginOutputs {
   const customerRevenue = customerUnit * qty;
   const vendorCost = vendorUnit * qty;
   const dutyCost = vendorCost * tariffRate;
-  const estimated3plCost = dutyCost * 0.5 + 0.1 * qty; // 3PL bill includes duty
+  const estimated3plCost = dutyCost * 0.4 + 0.1 * qty; // 3PL bill includes duty
   const estimatedMargin = customerRevenue - vendorCost - estimated3plCost; // no double-count
   const estimatedMarginRate = customerRevenue > 0 ? estimatedMargin / customerRevenue : 0;
 
