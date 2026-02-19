@@ -284,28 +284,23 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const vendorUnitPrice = Number(item.vendorUnitPrice || 0);
     const { tariffRate, baseTariffKey, originCountry } = getTariffContext(item);
     const vendorCost = vendorUnitPrice * qty;
-    const dutyCost = vendorCost * tariffRate * 0.4;   // estimated duty paid
-    const shippingCost = 0.1 * qty;                   // $0.10/pc freight
-    const est3pl = dutyCost + shippingCost;            // total 3PL
+    const dutyCost = vendorCost * tariffRate;           // real customs duty
+    const handlingCost = dutyCost * 0.4;               // 3PL handling = duty × 0.4
+    const shippingCost = 0.1 * qty;                    // $0.10/pc freight
+    const est3pl = handlingCost + shippingCost;        // total 3PL bill
     const revenue = customerUnitPrice * qty;
     const margin = revenue - vendorCost - est3pl;
     const marginRate = revenue > 0 ? margin / revenue : 0;
-    // Per-unit breakdown
+    // Per-unit
     const dutyPerUnit = qty > 0 ? dutyCost / qty : 0;
+    const handlingPerUnit = qty > 0 ? handlingCost / qty : 0;
     const est3plPerUnit = qty > 0 ? est3pl / qty : 0;
     return {
-      tariffRate,
-      baseTariffKey,
-      originCountry,
-      revenue,
-      vendorCost,
-      dutyCost,
-      shippingCost,
-      est3pl,
-      margin,
-      marginRate,
-      dutyPerUnit,
-      est3plPerUnit,
+      tariffRate, baseTariffKey, originCountry,
+      revenue, vendorCost,
+      dutyCost, handlingCost, shippingCost, est3pl,
+      margin, marginRate,
+      dutyPerUnit, handlingPerUnit, est3plPerUnit,
     };
   };
 
@@ -1293,34 +1288,29 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             {/* Per-Unit Cost Breakdown */}
                             {(() => {
                               const est = getEstimate(item);
-                              const vendorUnit = Number(item.vendorUnitPrice || 0);
                               return (
-                                <div className="text-[10px] rounded-lg border bg-muted/10 px-3 py-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+                                <div className="text-[10px] rounded-lg border bg-muted/10 px-3 py-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5">
                                   <div>
                                     <span className="text-muted-foreground">Tariff Key: </span>
-                                    <span className="font-medium truncate" title={est.baseTariffKey}>{est.baseTariffKey}</span>
+                                    <span className="font-medium" title={est.baseTariffKey}>{est.baseTariffKey}</span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Duty Rate: </span>
                                     <span className="font-medium">{(est.tariffRate * 100).toFixed(1)}%</span>
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">Duty/pc: </span>
-                                    <span className="font-medium">${est.dutyPerUnit.toFixed(3)}</span>
-                                    <span className="text-muted-foreground ml-1">(${vendorUnit.toFixed(2)} × {(est.tariffRate * 100).toFixed(1)}% × 0.4)</span>
+                                    <span className="text-muted-foreground">3PL Duty/pc: </span>
+                                    <span className="font-medium">${est.handlingPerUnit.toFixed(3)}</span>
+                                    <span className="text-muted-foreground ml-1">(duty × 0.4)</span>
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">Ship/pc: </span>
-                                    <span className="font-medium">$0.10</span>
+                                    <span className="text-muted-foreground">3PL Ship/pc: </span>
+                                    <span className="font-medium">$0.100</span>
                                   </div>
-                                  <div className="font-semibold">
-                                    <span className="text-muted-foreground">3PL/pc: </span>
+                                  <div className="font-semibold col-span-2">
+                                    <span className="text-muted-foreground">3PL Total/pc: </span>
                                     <span>${est.est3plPerUnit.toFixed(3)}</span>
-                                    <span className="text-muted-foreground ml-1">(duty + ship)</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">3PL Total: </span>
-                                    <span className="font-medium">${est.est3pl.toFixed(2)}</span>
+                                    <span className="text-muted-foreground ml-1"> — Total: ${est.est3pl.toFixed(2)}</span>
                                   </div>
                                 </div>
                               );
