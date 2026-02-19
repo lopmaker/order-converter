@@ -1230,7 +1230,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             onChange={(e) => updateItem(idx, 'vendorUnitPrice', Number(e.target.value))}
                           />
                           <div className="text-xs text-right font-medium pr-1 tabular-nums">
-                            ${(Number(item.vendorUnitPrice || 0) * Number(item.totalQty || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            ${(Number((item.customerUnitPrice ?? item.unitPrice) || 0) * Number(item.totalQty || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                           <Button
                             variant="ghost"
@@ -1282,24 +1282,6 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                               </div>
                             </div>
 
-                            {(() => {
-                              const estimate = getEstimate(item);
-                              return (
-                                <div className="text-[10px] rounded-lg border bg-muted/10 px-3 py-2 grid sm:grid-cols-6 gap-2">
-                                  <div className="sm:col-span-2 truncate" title={estimate.baseTariffKey}>
-                                    Key: {estimate.baseTariffKey}
-                                  </div>
-                                  <div>Origin: {estimate.originCountry}</div>
-                                  <div>Tariff: {(estimate.tariffRate * 100).toFixed(2)}%</div>
-                                  <div>Revenue: ${estimate.revenue.toFixed(2)}</div>
-                                  <div>Duty: ${estimate.duty.toFixed(2)}</div>
-                                  <div>Est. 3PL: ${estimate.est3pl.toFixed(2)}</div>
-                                  <div className={estimate.margin >= 0 ? 'text-emerald-600' : 'text-destructive'}>
-                                    Margin: ${estimate.margin.toFixed(2)} ({(estimate.marginRate * 100).toFixed(1)}%)
-                                  </div>
-                                </div>
-                              );
-                            })()}
 
                             {/* Size Breakdown */}
                             {item.sizeBreakdown && Object.keys(item.sizeBreakdown).length > 0 && (

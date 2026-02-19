@@ -185,9 +185,6 @@ export function TariffManager() {
         </Table>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Est. 3PL formula used in margin: (tariffRate x 0.5 x FOB) + (0.1 x Qty)
-      </p>
     </div>
   );
 }
