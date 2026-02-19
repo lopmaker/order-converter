@@ -26,6 +26,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { money, formatDate, num } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
 
+import { PoPreviewDialog } from '@/components/po-preview/po-preview-dialog';
+import { ExtractedOrderData } from '@/lib/parser';
+import { Download, FileText, Printer } from 'lucide-react';
+
 interface OrderItem {
   id: string;
   productCode: string | null;
@@ -61,6 +65,11 @@ interface OrderDetails {
   deliveredAt: string | null;
   closedAt: string | null;
   items: OrderItem[];
+  customerAddress: string | null;
+  supplierAddress: string | null;
+  shipmentTerms: string | null;
+  agent: string | null;
+  cancelDate: string | null;
 }
 
 interface DocSummary {
@@ -236,6 +245,35 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
 
   const [containerActionId, setContainerActionId] = useState(AUTO_CONTAINER);
+  const [isPoPreviewOpen, setIsPoPreviewOpen] = useState(false);
+
+  const poData: ExtractedOrderData = useMemo(() => {
+    if (!order) return { items: [] };
+    return {
+      vpoNumber: order.vpoNumber,
+      orderDate: formatDate(order.orderDate),
+      expShipDate: formatDate(order.expShipDate),
+      cancelDate: formatDate(order.cancelDate),
+      soReference: order.soReference || undefined,
+      customerName: order.customerName || undefined,
+      customerAddress: order.customerAddress || undefined,
+      supplierName: order.supplierName || undefined,
+      supplierAddress: order.supplierAddress || undefined,
+      shipTo: order.shipTo || undefined,
+      shipVia: order.shipVia || undefined,
+      shipmentTerms: order.shipmentTerms || undefined,
+      paymentTerms: order.paymentTerms || undefined,
+      agent: order.agent || undefined,
+      items: (order.items || []).map((item) => ({
+        productCode: item.productCode || '',
+        description: item.description || '',
+        totalQty: num(item.quantity),
+        unitPrice: num(item.vendorUnitPrice),
+        extension: num(item.quantity) * num(item.vendorUnitPrice),
+        color: item.collection || undefined,
+      })),
+    };
+  }, [order]);
 
   const containerMap = useMemo(() => {
     return new Map(containers.map((container) => [container.id, container]));
@@ -844,6 +882,10 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsPoPreviewOpen(true)}>
+              <FileText className="mr-2 h-4 w-4" />
+              View PO
+            </Button>
             <span className="text-xs text-muted-foreground">Rollback:</span>
             <Button
               size="sm"
@@ -1070,66 +1112,37 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                             {isExpanded && (
                               <TableRow>
                                 <TableCell colSpan={11} className="bg-muted/10 p-0">
-                                  <div className="grid gap-4 border-b p-4 md:grid-cols-2 lg:grid-cols-4 bg-slate-50/50">
-                                    <div className="space-y-1">
-                                      <span className="text-xs font-medium text-muted-foreground">
+                                  <div className="flex items-center gap-6 border-b p-4 bg-slate-50/50 text-sm">
+                                    <div className="flex-1 space-y-1">
+                                      <span className="text-xs font-medium text-muted-foreground block">
                                         Tariff Info
                                       </span>
-                                      <div className="text-sm">
-                                        <div>Rate: {(num(item.tariffRate) * 100).toFixed(1)}%</div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {item.productClass || '-'}
-                                        </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">
+                                          {(num(item.tariffRate) * 100).toFixed(1)}%
+                                        </span>
+                                        <Badge variant="outline" className="text-[10px] h-5">
+                                          {item.productClass || 'No Class'}
+                                        </Badge>
                                       </div>
                                     </div>
 
-                                    <div className="space-y-1">
-                                      <span className="text-xs font-medium text-muted-foreground">
-                                        Duty Breakdown
+                                    <div className="flex-1 space-y-1">
+                                      <span className="text-xs font-medium text-muted-foreground block">
+                                        Duty
                                       </span>
-                                      <div className="text-sm">
-                                        <div className="flex justify-between">
-                                          <span>Duty/pc:</span>
-                                          <span className="font-medium">
-                                            {money(dutyCost / qty)}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between text-xs text-muted-foreground">
-                                          <span>Total Duty:</span>
-                                          <span>{money(dutyCost)}</span>
-                                        </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground text-xs">Per Unit:</span>
+                                        <span className="font-medium">{money(dutyCost / qty)}</span>
                                       </div>
                                     </div>
 
-                                    <div className="col-span-2 space-y-1 rounded-md border bg-background p-2">
-                                      <span className="text-xs font-medium text-muted-foreground">
-                                        3PL Cost Structure (Per Unit)
+                                    <div className="flex-1 space-y-1">
+                                      <span className="text-xs font-medium text-muted-foreground block">
+                                        3PL Cost (Per Unit)
                                       </span>
-                                      <div className="grid grid-cols-3 gap-4 text-sm">
-                                        <div>
-                                          <div className="text-[10px] text-muted-foreground uppercase">
-                                            3PL Duty (Handling)
-                                          </div>
-                                          <div className="font-medium text-blue-600">
-                                            {money(handlingCost / qty)}
-                                          </div>
-                                        </div>
-                                        <div>
-                                          <div className="text-[10px] text-muted-foreground uppercase">
-                                            3PL Ship ($0.10)
-                                          </div>
-                                          <div className="font-medium text-blue-600">
-                                            {money(shipCost / qty)}
-                                          </div>
-                                        </div>
-                                        <div className="border-l pl-4">
-                                          <div className="text-[10px] text-muted-foreground uppercase font-bold">
-                                            3PL Total
-                                          </div>
-                                          <div className="font-bold text-blue-700">
-                                            {money(total3pl / qty)}
-                                          </div>
-                                        </div>
+                                      <div className="font-bold text-blue-700 text-base">
+                                        {money(total3pl / qty)}
                                       </div>
                                     </div>
                                   </div>
@@ -1476,7 +1489,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                     className="grid grid-cols-[140px_1fr] gap-3 rounded-lg border p-3"
                   >
                     <div className="text-xs text-muted-foreground">
-                      <div>{event.at ? new Date(event.at).toLocaleDateString() : '-'}</div>
+                      <div>{formatDate(event.at)}</div>
                     </div>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1504,6 +1517,11 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
         </TabsContent>
       </Tabs>
       <PromptDialog {...promptDialogProps} />
+      <PoPreviewDialog
+        open={isPoPreviewOpen}
+        onOpenChange={setIsPoPreviewOpen}
+        data={poData}
+      />
     </div>
   );
 }
