@@ -6,7 +6,6 @@ const connectionString = process.env.DATABASE_URL!;
 
 const pool = new Pool({
   connectionString,
-  ssl: { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool, { schema });

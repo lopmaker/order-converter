@@ -1,4 +1,5 @@
 import { db } from '@/db';
+export const dynamic = 'force-dynamic';
 import {
   commercialInvoices,
   logisticsBills,
@@ -33,17 +34,17 @@ function serializeDatesInOrder(order: Order): SerializedOrder {
 
 
 async function getRecentOrders(page: number, pageSize: number): Promise<{ orders: SerializedOrder[]; hasMore: boolean }> {
-   const fetchedOrders: Order[] = await db.query.orders.findMany({
-     orderBy: desc(orders.createdAt),
-     limit: pageSize + 1,
-     offset: (page - 1) * pageSize,
-   });
+  const fetchedOrders: Order[] = await db.query.orders.findMany({
+    orderBy: desc(orders.createdAt),
+    limit: pageSize + 1,
+    offset: (page - 1) * pageSize,
+  });
 
-   const hasMore = fetchedOrders.length > pageSize;
-   const serializedOrders: SerializedOrder[] = fetchedOrders.slice(0, pageSize).map(serializeDatesInOrder);
+  const hasMore = fetchedOrders.length > pageSize;
+  const serializedOrders: SerializedOrder[] = fetchedOrders.slice(0, pageSize).map(serializeDatesInOrder);
 
-   return { orders: serializedOrders, hasMore };
- }
+  return { orders: serializedOrders, hasMore };
+}
 
 async function getStats() {
   try {
