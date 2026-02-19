@@ -32,8 +32,11 @@ export function parseDecimalInput(value: unknown, fallback = 0): number {
 }
 
 /**
- * User-defined estimate formula:
- * est_3pl_cost = (tariffRate * 0.5) * FOB(vendor) + 0.1 * qty
+ * Margin formula:
+ *   dutyCost     = vendorCost × tariffRate         (shown for reference only)
+ *   estimated3pl = dutyCost × 0.5 + $0.10/pc      (3PL bill — INCLUDES duty)
+ *   margin       = revenue − vendorCost − estimated3plCost
+ *   (duty is NOT deducted separately — it's already inside estimated3plCost)
  */
 export function calculateEstimatedMargin(input: MarginInputs): MarginOutputs {
   const qty = Math.max(0, input.qty);
@@ -44,8 +47,8 @@ export function calculateEstimatedMargin(input: MarginInputs): MarginOutputs {
   const customerRevenue = customerUnit * qty;
   const vendorCost = vendorUnit * qty;
   const dutyCost = vendorCost * tariffRate;
-  const estimated3plCost = vendorCost * tariffRate * 0.5 + 0.1 * qty;
-  const estimatedMargin = customerRevenue - vendorCost - dutyCost - estimated3plCost;
+  const estimated3plCost = dutyCost * 0.5 + 0.1 * qty; // 3PL bill includes duty
+  const estimatedMargin = customerRevenue - vendorCost - estimated3plCost; // no double-count
   const estimatedMarginRate = customerRevenue > 0 ? estimatedMargin / customerRevenue : 0;
 
   return {
