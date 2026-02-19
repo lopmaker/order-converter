@@ -36,6 +36,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-dropzone": "^15.0.0",
+    "react-hot-toast": "^2.6.0",
     "react-pdf": "^10.3.0",
     "react-remove-scroll": "^2.7.2",
     "react-remove-scroll-bar": "^2.3.6",
