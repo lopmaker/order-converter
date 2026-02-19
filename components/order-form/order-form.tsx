@@ -1301,7 +1301,6 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                   <div>
                                     <span className="text-muted-foreground">3PL Duty/pc: </span>
                                     <span className="font-medium">${est.handlingPerUnit.toFixed(3)}</span>
-                                    <span className="text-muted-foreground ml-1">(duty × 0.4)</span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">3PL Ship/pc: </span>
