@@ -283,22 +283,29 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const customerUnitPrice = Number(item.customerUnitPrice ?? item.unitPrice ?? 0);
     const vendorUnitPrice = Number(item.vendorUnitPrice || 0);
     const { tariffRate, baseTariffKey, originCountry } = getTariffContext(item);
-    const revenue = customerUnitPrice * qty;
     const vendorCost = vendorUnitPrice * qty;
-    const duty = vendorCost * tariffRate;
-    const est3pl = vendorCost * tariffRate * 0.5 + 0.1 * qty;
-    const margin = revenue - vendorCost - duty - est3pl;
+    const dutyCost = vendorCost * tariffRate * 0.4;   // estimated duty paid
+    const shippingCost = 0.1 * qty;                   // $0.10/pc freight
+    const est3pl = dutyCost + shippingCost;            // total 3PL
+    const revenue = customerUnitPrice * qty;
+    const margin = revenue - vendorCost - est3pl;
     const marginRate = revenue > 0 ? margin / revenue : 0;
+    // Per-unit breakdown
+    const dutyPerUnit = qty > 0 ? dutyCost / qty : 0;
+    const est3plPerUnit = qty > 0 ? est3pl / qty : 0;
     return {
       tariffRate,
       baseTariffKey,
       originCountry,
       revenue,
       vendorCost,
-      duty,
+      dutyCost,
+      shippingCost,
       est3pl,
       margin,
       marginRate,
+      dutyPerUnit,
+      est3plPerUnit,
     };
   };
 
@@ -1282,6 +1289,42 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                               </div>
                             </div>
 
+
+                            {/* Per-Unit Cost Breakdown */}
+                            {(() => {
+                              const est = getEstimate(item);
+                              const vendorUnit = Number(item.vendorUnitPrice || 0);
+                              return (
+                                <div className="text-[10px] rounded-lg border bg-muted/10 px-3 py-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+                                  <div>
+                                    <span className="text-muted-foreground">Tariff Key: </span>
+                                    <span className="font-medium truncate" title={est.baseTariffKey}>{est.baseTariffKey}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Duty Rate: </span>
+                                    <span className="font-medium">{(est.tariffRate * 100).toFixed(1)}%</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Duty/pc: </span>
+                                    <span className="font-medium">${est.dutyPerUnit.toFixed(3)}</span>
+                                    <span className="text-muted-foreground ml-1">(${vendorUnit.toFixed(2)} × {(est.tariffRate * 100).toFixed(1)}% × 0.4)</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Ship/pc: </span>
+                                    <span className="font-medium">$0.10</span>
+                                  </div>
+                                  <div className="font-semibold">
+                                    <span className="text-muted-foreground">3PL/pc: </span>
+                                    <span>${est.est3plPerUnit.toFixed(3)}</span>
+                                    <span className="text-muted-foreground ml-1">(duty + ship)</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">3PL Total: </span>
+                                    <span className="font-medium">${est.est3pl.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Size Breakdown */}
                             {item.sizeBreakdown && Object.keys(item.sizeBreakdown).length > 0 && (
