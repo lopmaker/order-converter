@@ -23,59 +23,58 @@ export function FileList({
   if (orders.length === 0) return null;
 
   return (
-    <div className="flex flex-col h-full border-r bg-muted/5 w-[250px] shrink-0">
-      <div className="p-4 border-b flex justify-between items-center bg-background/95 backdrop-blur">
-        <h3 className="font-semibold text-sm">Orders ({orders.length})</h3>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onAddMore}>
-          <Plus className="h-4 w-4" />
+    <div className="flex flex-col h-full border-r bg-card/50 w-[220px] shrink-0">
+      <div className="px-4 py-3 border-b flex justify-between items-center bg-background/95 backdrop-blur">
+        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+          Files ({orders.length})
+        </h3>
+        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAddMore}>
+          <Plus className="h-3.5 w-3.5" />
         </Button>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="p-1.5 space-y-0.5">
           {orders.map((order) => (
             <div
               key={order.id}
               className={cn(
-                'group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 text-sm',
+                'group flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all text-xs',
                 activeOrderId === order.id
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'text-muted-foreground'
+                  ? 'bg-primary/8 text-foreground border-l-2 border-primary ml-0 font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 border-l-2 border-transparent ml-0'
               )}
               onClick={() => onSelectOrder(order.id)}
             >
               {/* Status Icon */}
               <div className="shrink-0">
                 {order.status === 'processing' && (
-                  <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
                 )}
                 {order.status === 'completed' && (
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 )}
-                {order.status === 'error' && <AlertCircle className="h-4 w-4 text-destructive" />}
-                {order.status === 'idle' && <FileText className="h-4 w-4 opacity-50" />}
+                {order.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                {order.status === 'idle' && <FileText className="h-3.5 w-3.5 opacity-40" />}
               </div>
 
               {/* Filename */}
               <div className="flex-1 min-w-0">
-                <p className="truncate">{order.fileName || order.file?.name || 'Unknown File'}</p>
+                <p className="truncate">{order.fileName || order.file?.name || 'Unknown'}</p>
                 {order.status === 'processing' && (
-                  <p className="text-[10px] opacity-70 truncate">
+                  <p className="text-[9px] opacity-60 truncate mt-0.5">
                     {order.processingStep || 'Processing...'}
                   </p>
                 )}
               </div>
 
-              {/* Remove Button (visible on hover or active) */}
+              {/* Remove Button */}
               <Button
                 variant="ghost"
                 size="icon"
-                className={cn(
-                  'h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity',
-                  activeOrderId === order.id && 'bg-background/20 hover:bg-background/40'
-                )}
+                className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                 onClick={(e) => onRemoveOrder(order.id, e)}
               >
-                <X className="h-3 w-3" />
+                <X className="h-2.5 w-2.5" />
               </Button>
             </div>
           ))}
@@ -84,3 +83,4 @@ export function FileList({
     </div>
   );
 }
+

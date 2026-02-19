@@ -56,16 +56,16 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       {/* App Header */}
-      <header className="flex-none h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-6 justify-between z-50">
-        <div className="flex items-center gap-2 font-semibold">
-          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
-            <FileText className="h-5 w-5" />
+      <header className="flex-none h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-5 justify-between z-50">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground flex items-center justify-center">
+            <FileText className="h-3.5 w-3.5" />
           </div>
-          <span>Order Converter AI</span>
+          <span className="font-semibold text-sm tracking-tight">OrderAI</span>
         </div>
         <nav>
-          <Button asChild variant="outline" size="lg" className="px-6">
-            <Link href="/dashboard">View Sales Dashboard</Link>
+          <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
+            <Link href="/dashboard">Dashboard →</Link>
           </Button>
         </nav>
       </header>
