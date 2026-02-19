@@ -57,8 +57,7 @@ async function getStats() {
             totalOrders: sql<number>`count(*)`.mapWith(Number),
             stageCounts: sql<Record<string, number>>`jsonb_object_agg(${orders.workflowStatus}, count(*)) FILTER (WHERE ${orders.workflowStatus} IS NOT NULL)`.as('stage_counts'),
           })
-          .from(orders)
-          .groupBy(sql.raw('1')),
+          .from(orders),
         db.select({ count: sql<number>`count(*)` }).from(shippingDocuments),
         db
           .select({ status: commercialInvoices.status, count: sql<number>`count(*)` })
@@ -172,7 +171,7 @@ export default async function DashboardPage() {
             href="/"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
           >
-            Back to Converter
+            New Order (Converter)
           </Link>
         </div>
       </div>

@@ -822,7 +822,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
             <Button
               variant="outline"
               disabled={busyAction === 'REFRESH'}
-              onClick={() => runAction('REFRESH', async () => {})}
+              onClick={() => runAction('REFRESH', async () => { })}
             >
               {busyAction === 'REFRESH' ? 'Refreshing...' : 'Refresh'}
             </Button>
@@ -970,7 +970,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                 <p className="text-xl font-semibold">
                   {money(
                     (financeSummary?.totals.vendorOutstanding || 0) +
-                      (financeSummary?.totals.logisticsOutstanding || 0)
+                    (financeSummary?.totals.logisticsOutstanding || 0)
                   )}
                 </p>
               </div>
@@ -1376,7 +1376,6 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
                   >
                     <div className="text-xs text-muted-foreground">
                       <div>{event.at ? new Date(event.at).toLocaleDateString() : '-'}</div>
-                      <div>{event.at ? new Date(event.at).toLocaleTimeString() : '-'}</div>
                     </div>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
