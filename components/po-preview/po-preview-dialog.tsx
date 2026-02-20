@@ -211,19 +211,10 @@ export function PoPreviewDialog({ open, onOpenChange, data }: PoPreviewDialogPro
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
+      const { saveAs } = await import('file-saver');
       const safeVpo = (data.vpoNumber || 'draft').replace(/[^a-z0-9-_]/gi, '_');
       const supplierInitials = getSupplierInitials(data.supplierName);
-      a.download = `VENDOR-PO-${safeVpo}-${supplierInitials}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
+      saveAs(blob, `VENDOR-PO-${safeVpo}-${supplierInitials}.xlsx`);
     } catch (error) {
       console.error('Excel Export failed', error);
       alert('Failed to export Excel.');

@@ -597,17 +597,8 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = getSafeFilename('xlsx', mode);
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 100);
+    const { saveAs } = await import('file-saver');
+    saveAs(blob, getSafeFilename('xlsx', mode));
   };
 
   const handleDownloadPdf = async (mode: PriceMode = 'customer') => {
@@ -898,7 +889,19 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                   customerAddress: data?.customerAddress || formData.customerAddress,
                   shipmentTerms: data?.shipmentTerms || formData.shipmentTerms,
                   paymentTerms: data?.paymentTerms || formData.paymentTerms,
-                  items: formData.items,
+                  items: formData.items.map((item) => ({
+                    productCode: item.productCode,
+                    description: item.description,
+                    quantity: item.totalQty || 0,
+                    unitPrice: Number(item.customerUnitPrice ?? item.unitPrice ?? 0),
+                    customerUnitPrice: Number(item.customerUnitPrice ?? item.unitPrice ?? 0),
+                    vendorUnitPrice: Number(item.vendorUnitPrice ?? 0),
+                    color: item.color,
+                    material: item.material,
+                    sizeBreakdown: item.sizeBreakdown,
+                    productClass: item.productClass,
+                    collection: item.collection,
+                  })),
                 };
 
                 const res = await fetch('/api/save-order', {
