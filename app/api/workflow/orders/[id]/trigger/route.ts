@@ -8,6 +8,7 @@ import {
   orders,
   shippingDocuments,
   vendorBills,
+  logisticsBills,
 } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { addDays, parseDecimalInput, round2 } from '@/lib/workflow';
@@ -84,56 +85,19 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       updated: {},
     };
 
-    if (action === 'GENERATE_SHIPPING_DOC') {
-      const existingDoc = containerId
-        ? await db.query.shippingDocuments.findFirst({
-            where: and(
-              eq(shippingDocuments.orderId, id),
-              eq(shippingDocuments.containerId, containerId)
-            ),
-          })
-        : await db.query.shippingDocuments.findFirst({
-            where: eq(shippingDocuments.orderId, id),
-          });
 
-      if (existingDoc) {
-        result.created = { shippingDocument: false };
-        result.shippingDocument = existingDoc;
-      } else {
-        const [shippingDoc] = await db
-          .insert(shippingDocuments)
-          .values({
-            orderId: id,
-            containerId,
-            docNo: createDefaultCode('SD'),
-            issueDate: new Date(),
-            status: 'ISSUED',
-            payload: JSON.stringify({
-              vpoNumber: order.vpoNumber,
-              shipTo: order.shipTo,
-              supplierName: order.supplierName,
-            }),
-          })
-          .returning();
-        result.created = { shippingDocument: true };
-        result.shippingDocument = shippingDoc;
-      }
-
-      await db.update(orders).set({ workflowStatus: 'SHIPPING_DOC_SENT' }).where(eq(orders.id, id));
-      result.updated = { workflowStatus: 'SHIPPING_DOC_SENT' };
-    }
 
     if (action === 'START_TRANSIT') {
       const existingDoc = containerId
         ? await db.query.shippingDocuments.findFirst({
-            where: and(
-              eq(shippingDocuments.orderId, id),
-              eq(shippingDocuments.containerId, containerId)
-            ),
-          })
+          where: and(
+            eq(shippingDocuments.orderId, id),
+            eq(shippingDocuments.containerId, containerId)
+          ),
+        })
         : await db.query.shippingDocuments.findFirst({
-            where: eq(shippingDocuments.orderId, id),
-          });
+          where: eq(shippingDocuments.orderId, id),
+        });
 
       let shippingDoc = existingDoc;
       if (!shippingDoc) {
@@ -247,7 +211,37 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           .where(eq(containers.id, containerId));
       }
 
-      result.created = { logisticsBill: false };
+      // Automatically generate 3PL Logistics Bill if it doesn't exist
+      const existingLogisticsBill = await db.query.logisticsBills.findFirst({
+        where: eq(logisticsBills.orderId, id),
+      });
+
+      let logisticsBill = existingLogisticsBill;
+      if (!logisticsBill) {
+        const total3pl = items.reduce(
+          (sum, item) => sum + parseDecimalInput(item.estimated3plCost, 0),
+          0
+        );
+        const issueDate = new Date();
+        const dueDate = addDays(issueDate, order.logisticsTermDays ?? 15);
+        const [createdLogisticsBill] = await db
+          .insert(logisticsBills)
+          .values({
+            orderId: id,
+            containerId,
+            billNo: createDefaultCode('3PL'),
+            provider: 'Auto 3PL',
+            issueDate,
+            dueDate,
+            amount: total3pl.toFixed(2),
+            currency: 'USD',
+            status: 'OPEN',
+          })
+          .returning();
+        logisticsBill = createdLogisticsBill;
+      }
+
+      result.created = { logisticsBill: !existingLogisticsBill };
       result.updated = {
         workflowStatus: 'AR_AP_OPEN',
         deliveredAt: deliveredAt.toISOString(),

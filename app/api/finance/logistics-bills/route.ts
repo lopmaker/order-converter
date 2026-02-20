@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { containers, logisticsBills, orders, payments } from '@/db/schema';
+import { logisticsBills, payments } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { addDays, parseDecimalInput } from '@/lib/workflow';
+import { parseDecimalInput } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { createLogisticsBill } from '@/services/finance.service';
+import { logisticsBillSchema } from '@/lib/schemas';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -47,67 +50,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      orderId?: string;
-      containerId?: string;
-      provider?: string;
-      billNo?: string;
-      amount?: number | string;
-      issueDate?: string;
-      dueDate?: string;
-      currency?: string;
-    };
-
-    if (!body.containerId) {
-      return NextResponse.json(
-        { error: 'containerId is required for 3PL bill (container-based settlement)' },
-        { status: 400 }
-      );
-    }
-
-    const issueDate = body.issueDate ? new Date(body.issueDate) : new Date();
-
-    const order = body.orderId
-      ? await db.query.orders.findFirst({ where: eq(orders.id, body.orderId) })
-      : null;
-
-    const container = body.containerId
-      ? await db.query.containers.findFirst({ where: eq(containers.id, body.containerId) })
-      : null;
-
-    const amount = parseDecimalInput(body.amount, NaN);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json(
-        { error: 'amount is required for 3PL bill and must be > 0' },
-        { status: 400 }
-      );
-    }
-
-    const anchor = container?.arrivalAtWarehouse ?? order?.deliveredAt ?? issueDate;
-    const termDays = order?.logisticsTermDays ?? 15;
-    const dueDate = body.dueDate ? new Date(body.dueDate) : addDays(anchor, termDays);
-
-    const [saved] = await db
-      .insert(logisticsBills)
-      .values({
-        orderId: body.orderId || null,
-        containerId: body.containerId || null,
-        provider: body.provider || '3PL',
-        billNo: body.billNo?.trim() || createDefaultCode('LB'),
-        issueDate,
-        dueDate,
-        amount: amount.toFixed(2),
-        currency: body.currency || 'USD',
-        status: 'OPEN',
-      })
-      .returning();
-
-    if (body.orderId) {
-      await recomputeOrderWorkflowStatus(body.orderId);
-    }
-
+    const body = await req.json();
+    const data = logisticsBillSchema.parse(body);
+    const saved = await createLogisticsBill(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

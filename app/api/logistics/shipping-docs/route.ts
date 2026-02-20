@@ -3,6 +3,9 @@ import { db } from '@/db';
 import { shippingDocuments } from '@/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { shippingDocSchema } from '@/lib/schemas';
+import { createShippingDoc } from '@/services/logistics.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -22,10 +25,10 @@ export async function GET(req: NextRequest) {
 
     const data = orderId
       ? await db
-          .select()
-          .from(shippingDocuments)
-          .where(eq(shippingDocuments.orderId, orderId))
-          .orderBy(desc(shippingDocuments.createdAt))
+        .select()
+        .from(shippingDocuments)
+        .where(eq(shippingDocuments.orderId, orderId))
+        .orderBy(desc(shippingDocuments.createdAt))
       : await db.select().from(shippingDocuments).orderBy(desc(shippingDocuments.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -36,33 +39,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      orderId?: string;
-      containerId?: string;
-      docNo?: string;
-      status?: string;
-      payload?: string;
-      issueDate?: string;
-    };
-
-    if (!body.orderId) {
-      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
-    }
-
-    const [saved] = await db
-      .insert(shippingDocuments)
-      .values({
-        orderId: body.orderId,
-        containerId: body.containerId || null,
-        docNo: body.docNo?.trim() || createDefaultCode('SD'),
-        issueDate: body.issueDate ? new Date(body.issueDate) : new Date(),
-        status: body.status || 'DRAFT',
-        payload: body.payload || null,
-      })
-      .returning();
-
+    const body = await req.json();
+    const data = shippingDocSchema.passthrough().parse(body) as z.infer<typeof shippingDocSchema> & { issueDate?: string | Date | null };
+    const saved = await createShippingDoc(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

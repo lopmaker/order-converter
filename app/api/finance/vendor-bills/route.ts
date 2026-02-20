@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { orderItems, orders, payments, vendorBills } from '@/db/schema';
+import { payments, vendorBills } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { addDays, parseDecimalInput, round2 } from '@/lib/workflow';
+import { parseDecimalInput } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { vendorBillSchema } from '@/lib/schemas';
+import { createVendorBill } from '@/services/finance.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -22,10 +25,10 @@ export async function GET(req: NextRequest) {
     const orderId = req.nextUrl.searchParams.get('orderId');
     const data = orderId
       ? await db
-          .select()
-          .from(vendorBills)
-          .where(eq(vendorBills.orderId, orderId))
-          .orderBy(desc(vendorBills.createdAt))
+        .select()
+        .from(vendorBills)
+        .where(eq(vendorBills.orderId, orderId))
+        .orderBy(desc(vendorBills.createdAt))
       : await db.select().from(vendorBills).orderBy(desc(vendorBills.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -36,63 +39,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      orderId?: string;
-      billNo?: string;
-      amount?: number | string;
-      issueDate?: string;
-      dueDate?: string;
-      currency?: string;
-    };
-
-    if (!body.orderId) {
-      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
-    }
-
-    const order = await db.query.orders.findFirst({ where: eq(orders.id, body.orderId) });
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    const issueDate = body.issueDate ? new Date(body.issueDate) : new Date();
-    let amount = parseDecimalInput(body.amount, NaN);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      const items = await db
-        .select({
-          qty: orderItems.quantity,
-          vendorUnitPrice: orderItems.vendorUnitPrice,
-        })
-        .from(orderItems)
-        .where(eq(orderItems.orderId, body.orderId));
-      amount = round2(
-        items.reduce(
-          (sum, item) =>
-            sum + parseDecimalInput(item.qty, 0) * parseDecimalInput(item.vendorUnitPrice, 0),
-          0
-        )
-      );
-    }
-    const dueDate = body.dueDate
-      ? new Date(body.dueDate)
-      : addDays(issueDate, order.vendorTermDays ?? 30);
-
-    const [saved] = await db
-      .insert(vendorBills)
-      .values({
-        orderId: body.orderId,
-        billNo: body.billNo?.trim() || createDefaultCode('VB'),
-        issueDate,
-        dueDate,
-        amount: amount.toFixed(2),
-        currency: body.currency || 'USD',
-        status: 'OPEN',
-      })
-      .returning();
-
-    await recomputeOrderWorkflowStatus(body.orderId);
-
+    const body = await req.json();
+    const data = vendorBillSchema.parse(body);
+    const saved = await createVendorBill(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

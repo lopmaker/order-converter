@@ -43,6 +43,7 @@
     "react-remove-scroll-bar": "^2.3.6",
     "react-resizable-panels": "^4.6.2",
     "recharts": "^3.7.0",
+    "swr": "^2.4.0",
     "tailwind-merge": "^3.4.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"

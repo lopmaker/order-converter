@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { commercialInvoices, logisticsBills, payments, vendorBills } from '@/db/schema';
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import { parseDecimalInput, round2 } from '@/lib/workflow';
+import { parseDecimalInput } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { paymentSchema } from '@/lib/schemas';
+import { createPayment, refreshBillStatus, PaymentTargetType } from '@/services/finance.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
 }
-
-type PaymentTargetType = 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL';
 
 function resolveTargetType(value: unknown): PaymentTargetType | null {
   if (value === 'CUSTOMER_INVOICE' || value === 'VENDOR_BILL' || value === 'LOGISTICS_BILL') {
@@ -18,46 +19,6 @@ function resolveTargetType(value: unknown): PaymentTargetType | null {
   return null;
 }
 
-async function refreshBillStatus(
-  targetType: PaymentTargetType,
-  targetId: string
-): Promise<string | null> {
-  const paidRows = await db
-    .select({ amount: payments.amount })
-    .from(payments)
-    .where(and(eq(payments.targetType, targetType), eq(payments.targetId, targetId)));
-
-  const paidAmount = round2(
-    paidRows.reduce((sum, row) => sum + parseDecimalInput(row.amount, 0), 0)
-  );
-
-  if (targetType === 'CUSTOMER_INVOICE') {
-    const invoice = await db.query.commercialInvoices.findFirst({
-      where: eq(commercialInvoices.id, targetId),
-    });
-    if (!invoice) return null;
-    const dueAmount = parseDecimalInput(invoice.amount, 0);
-    const status = paidAmount >= dueAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN';
-    await db.update(commercialInvoices).set({ status }).where(eq(commercialInvoices.id, targetId));
-    return invoice.orderId;
-  }
-
-  if (targetType === 'VENDOR_BILL') {
-    const bill = await db.query.vendorBills.findFirst({ where: eq(vendorBills.id, targetId) });
-    if (!bill) return null;
-    const dueAmount = parseDecimalInput(bill.amount, 0);
-    const status = paidAmount >= dueAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN';
-    await db.update(vendorBills).set({ status }).where(eq(vendorBills.id, targetId));
-    return bill.orderId;
-  }
-
-  const bill = await db.query.logisticsBills.findFirst({ where: eq(logisticsBills.id, targetId) });
-  if (!bill) return null;
-  const dueAmount = parseDecimalInput(bill.amount, 0);
-  const status = paidAmount >= dueAmount ? 'PAID' : paidAmount > 0 ? 'PARTIAL' : 'OPEN';
-  await db.update(logisticsBills).set({ status }).where(eq(logisticsBills.id, targetId));
-  return bill.orderId;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -97,33 +58,33 @@ export async function GET(req: NextRequest) {
       const [invoicePayments, vendorPayments, logisticsPayments] = await Promise.all([
         invoiceIds.length > 0
           ? db
-              .select()
-              .from(payments)
-              .where(
-                and(
-                  eq(payments.targetType, 'CUSTOMER_INVOICE'),
-                  inArray(payments.targetId, invoiceIds)
-                )
+            .select()
+            .from(payments)
+            .where(
+              and(
+                eq(payments.targetType, 'CUSTOMER_INVOICE'),
+                inArray(payments.targetId, invoiceIds)
               )
+            )
           : Promise.resolve([]),
         vendorIds.length > 0
           ? db
-              .select()
-              .from(payments)
-              .where(
-                and(eq(payments.targetType, 'VENDOR_BILL'), inArray(payments.targetId, vendorIds))
-              )
+            .select()
+            .from(payments)
+            .where(
+              and(eq(payments.targetType, 'VENDOR_BILL'), inArray(payments.targetId, vendorIds))
+            )
           : Promise.resolve([]),
         logisticsIds.length > 0
           ? db
-              .select()
-              .from(payments)
-              .where(
-                and(
-                  eq(payments.targetType, 'LOGISTICS_BILL'),
-                  inArray(payments.targetId, logisticsIds)
-                )
+            .select()
+            .from(payments)
+            .where(
+              and(
+                eq(payments.targetType, 'LOGISTICS_BILL'),
+                inArray(payments.targetId, logisticsIds)
               )
+            )
           : Promise.resolve([]),
       ]);
 
@@ -158,49 +119,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      targetType?: PaymentTargetType;
-      targetId?: string;
-      direction?: 'IN' | 'OUT';
-      amount?: number | string;
-      paymentDate?: string;
-      method?: string;
-      referenceNo?: string;
-      notes?: string;
-    };
-
-    const targetType = resolveTargetType(body.targetType);
-
-    if (!targetType || !body.targetId) {
-      return NextResponse.json({ error: 'targetType and targetId are required' }, { status: 400 });
-    }
-
-    const amount = parseDecimalInput(body.amount, NaN);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 });
-    }
-
-    const [saved] = await db
-      .insert(payments)
-      .values({
-        targetType,
-        targetId: body.targetId,
-        direction: body.direction || (targetType === 'CUSTOMER_INVOICE' ? 'IN' : 'OUT'),
-        amount: amount.toFixed(2),
-        paymentDate: body.paymentDate ? new Date(body.paymentDate) : new Date(),
-        method: body.method || null,
-        referenceNo: body.referenceNo || null,
-        notes: body.notes || null,
-      })
-      .returning();
-
-    const orderId = await refreshBillStatus(targetType, body.targetId);
-    if (orderId) {
-      await recomputeOrderWorkflowStatus(orderId);
-    }
-
+    const body = await req.json();
+    const data = paymentSchema.parse(body);
+    const saved = await createPayment(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

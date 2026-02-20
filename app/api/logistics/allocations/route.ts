@@ -4,6 +4,9 @@ import { containerAllocations } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 import { parseDecimalInput } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { allocateContainerSchema } from '@/lib/schemas';
+import { createContainerAllocation } from '@/services/logistics.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -53,41 +56,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      containerId?: string;
-      orderId?: string;
-      orderItemId?: string;
-      allocatedQty?: number | string;
-      allocatedAmount?: number | string;
-      notes?: string;
-    };
-
-    if (!body.containerId || !body.orderId) {
-      return NextResponse.json({ error: 'containerId and orderId are required' }, { status: 400 });
-    }
-
-    const [saved] = await db
-      .insert(containerAllocations)
-      .values({
-        containerId: body.containerId,
-        orderId: body.orderId,
-        orderItemId: body.orderItemId || null,
-        allocatedQty:
-          body.allocatedQty !== undefined
-            ? Math.max(0, Math.round(parseDecimalInput(body.allocatedQty, 0)))
-            : null,
-        allocatedAmount:
-          body.allocatedAmount !== undefined
-            ? parseDecimalInput(body.allocatedAmount, 0).toFixed(2)
-            : null,
-        notes: body.notes || null,
-      })
-      .returning();
-
-    await recomputeOrderWorkflowStatus(body.orderId);
-
+    const body = await req.json();
+    const data = allocateContainerSchema.parse(body);
+    const saved = await createContainerAllocation(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

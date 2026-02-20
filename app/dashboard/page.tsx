@@ -242,7 +242,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-1">
+      <div className="grid gap-4 md:grid-cols-1 mt-8">
         <WorkflowMapCard snapshot={flowSnapshot} />
       </div>
 

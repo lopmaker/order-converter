@@ -117,6 +117,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
   };
 
   const [formData, setFormData] = useState<ExtractedOrderData>(initializeData(data));
+  const [isSaved, setIsSaved] = useState<boolean>(!!data);
   const [isPoPreviewOpen, setIsPoPreviewOpen] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
@@ -352,12 +353,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
   };
 
   const getExportUnitPrice = (item: ExtractedOrderData['items'][number], mode: PriceMode) => {
-    if (mode === 'vendor') return Number(item.vendorUnitPrice || 0);
+    if (mode === 'vendor') return item.vendorUnitPrice ? Number(item.vendorUnitPrice) : null;
     return Number(item.customerUnitPrice ?? item.unitPrice ?? 0);
   };
 
   const getExportLineTotal = (item: ExtractedOrderData['items'][number], mode: PriceMode) => {
-    return getExportUnitPrice(item, mode) * Number(item.totalQty || 0);
+    const unitPrice = getExportUnitPrice(item, mode);
+    if (unitPrice === null) return null;
+    return unitPrice * Number(item.totalQty || 0);
   };
 
   const handleDownloadExcel = async (mode: PriceMode = 'customer') => {
@@ -511,8 +514,8 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         item.color,
         item.material,
         item.totalQty,
-        lineUnitPrice,
-        lineTotal, // Placeholder, will update with formula
+        lineUnitPrice !== null ? lineUnitPrice : '',
+        lineTotal !== null ? lineTotal : '', // Placeholder, will update with formula
       ]);
 
       // Track item rows for SUM formula
@@ -520,11 +523,14 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       lastItemRowNumber = row.number;
 
       // Set Formula for Line Total (Column G = Column E * Column F)
-      // E is 5th, F is 6th, G is 7th
-      row.getCell(7).value = {
-        formula: `E${row.number}*F${row.number}`,
-        result: lineTotal,
-      };
+      if (lineUnitPrice !== null && lineTotal !== null) {
+        row.getCell(7).value = {
+          formula: `E${row.number}*F${row.number}`,
+          result: lineTotal,
+        };
+      } else {
+        row.getCell(7).value = '';
+      }
 
       row.getCell(2).alignment = wrapText; // Wrap Description
       row.getCell(4).alignment = wrapText; // Wrap Material
@@ -547,7 +553,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     worksheet.addRow([]);
     const totalQty = formData.items.reduce((sum, item) => sum + (item.totalQty || 0), 0);
     const totalAmount = formData.items.reduce(
-      (sum, item) => sum + getExportLineTotal(item, mode),
+      (sum, item) => sum + (getExportLineTotal(item, mode) || 0),
       0
     );
 
@@ -587,19 +593,21 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     legalRow.getCell(2).alignment = { wrapText: true, vertical: 'top' };
     legalRow.height = 120; // More height for much longer text
 
-    // Generate file
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
-    const url = URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = getSafeFilename('xlsx', mode);
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 100);
   };
 
   const handleDownloadPdf = async (mode: PriceMode = 'customer') => {
@@ -703,8 +711,8 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
           item.color || '',
           item.material || '',
           item.totalQty,
-          `$${lineUnitPrice.toFixed(2)}`,
-          `$${lineTotal.toFixed(2)}`,
+          lineUnitPrice !== null ? `$${lineUnitPrice.toFixed(2)}` : '',
+          lineTotal !== null ? `$${lineTotal.toFixed(2)}` : '',
         ];
         tableRows.push(rowData);
 
@@ -727,7 +735,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       // Totals Row
       const totalQty = formData.items.reduce((sum, item) => sum + (item.totalQty || 0), 0);
       const totalAmount = formData.items.reduce(
-        (sum, item) => sum + getExportLineTotal(item, mode),
+        (sum, item) => sum + (getExportLineTotal(item, mode) || 0),
         0
       );
 
@@ -875,67 +883,85 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
           </div>
         </div>
         <div className="flex gap-2">
-          <DropdownMenu modal={false} open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <Button
+            size="sm"
+            disabled={!data && formData.items.length === 0}
+            className="bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm"
+            onClick={async (e) => {
+              e.preventDefault();
+              try {
+                const dbPayload = {
+                  ...formData,
+                  vpoNumber: data?.vpoNumber || formData.vpoNumber,
+                  customerName: data?.customerName || formData.customerName,
+                  customerAddress: data?.customerAddress || formData.customerAddress,
+                  shipmentTerms: data?.shipmentTerms || formData.shipmentTerms,
+                  paymentTerms: data?.paymentTerms || formData.paymentTerms,
+                  items: formData.items,
+                };
+
+                const res = await fetch('/api/save-order', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(dbPayload),
+                });
+
+                if (!res.ok) {
+                  const errData = await res.json().catch(() => ({}));
+                  throw new Error(errData.error || 'Failed to save');
+                }
+
+                setAlertConfig({
+                  open: true,
+                  title: 'Success',
+                  message: 'Order saved to Dashboard!',
+                  isError: false,
+                });
+                setIsSaved(true);
+              } catch (e: unknown) {
+                const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+                setAlertConfig({
+                  open: true,
+                  title: 'Save Failed',
+                  message: `Failed to save order: ${errorMessage}`,
+                  isError: true,
+                });
+                console.error('Save Error:', e);
+              }
+            }}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save
+          </Button>
+
+          <DropdownMenu
+            modal={false}
+            open={isMenuOpen}
+            onOpenChange={(open) => {
+              if (open && !isSaved) {
+                setAlertConfig({
+                  open: true,
+                  title: 'Action Required',
+                  message: 'You must save the order first before generating a Vendor PO.',
+                  isError: true,
+                });
+                setIsMenuOpen(false);
+              } else {
+                setIsMenuOpen(open);
+              }
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
-                disabled={!data && formData.items.length === 0}
                 className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-sm"
               >
-                <Save className="h-4 w-4 mr-2" />
-                Save / Export
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Generate Vendor PO
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={async (e) => {
-                  e.preventDefault();
-                  try {
-                    const dbPayload = {
-                      ...formData,
-                      vpoNumber: data?.vpoNumber || formData.vpoNumber,
-                      customerName: data?.customerName || formData.customerName,
-                      customerAddress: data?.customerAddress || formData.customerAddress,
-                      shipmentTerms: data?.shipmentTerms || formData.shipmentTerms,
-                      paymentTerms: data?.paymentTerms || formData.paymentTerms,
-                      items: formData.items,
-                    };
-
-                    const res = await fetch('/api/save-order', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(dbPayload),
-                    });
-
-                    if (!res.ok) {
-                      const errData = await res.json().catch(() => ({}));
-                      throw new Error(errData.error || 'Failed to save');
-                    }
-
-                    setAlertConfig({
-                      open: true,
-                      title: 'Success',
-                      message: 'Order saved to Dashboard!',
-                      isError: false,
-                    });
-                    setIsMenuOpen(false);
-                  } catch (e: unknown) {
-                    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-                    setAlertConfig({
-                      open: true,
-                      title: 'Save Failed',
-                      message: `Failed to save order: ${errorMessage}`,
-                      isError: true,
-                    });
-                    console.error('Save Error:', e);
-                  }
-                }}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save to Dashboard (DB)
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSaveJson}>
                 <Download className="h-4 w-4 mr-2" />

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { commercialInvoices, orders, payments } from '@/db/schema';
+import { commercialInvoices, payments } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { addDays, parseDecimalInput } from '@/lib/workflow';
+import { parseDecimalInput } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { commercialInvoiceSchema } from '@/lib/schemas';
+import { createCommercialInvoice } from '@/services/finance.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -22,10 +25,10 @@ export async function GET(req: NextRequest) {
     const orderId = req.nextUrl.searchParams.get('orderId');
     const data = orderId
       ? await db
-          .select()
-          .from(commercialInvoices)
-          .where(eq(commercialInvoices.orderId, orderId))
-          .orderBy(desc(commercialInvoices.createdAt))
+        .select()
+        .from(commercialInvoices)
+        .where(eq(commercialInvoices.orderId, orderId))
+        .orderBy(desc(commercialInvoices.createdAt))
       : await db.select().from(commercialInvoices).orderBy(desc(commercialInvoices.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -36,57 +39,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      orderId?: string;
-      containerId?: string;
-      invoiceNo?: string;
-      amount?: number | string;
-      issueDate?: string;
-      dueDate?: string;
-      currency?: string;
-    };
-
-    if (!body.orderId) {
-      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
-    }
-
-    const order = await db.query.orders.findFirst({ where: eq(orders.id, body.orderId) });
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    const issueDate = body.issueDate ? new Date(body.issueDate) : new Date();
-    const amount = parseDecimalInput(body.amount, parseDecimalInput(order.totalAmount, 0));
-
-    const anchorDate = order.deliveredAt ?? issueDate;
-    const dueDate = body.dueDate
-      ? new Date(body.dueDate)
-      : addDays(anchorDate, order.customerTermDays ?? 30);
-
-    const [saved] = await db
-      .insert(commercialInvoices)
-      .values({
-        orderId: body.orderId,
-        containerId: body.containerId || null,
-        invoiceNo: body.invoiceNo?.trim() || createDefaultCode('CI'),
-        issueDate,
-        dueDate,
-        amount: amount.toFixed(2),
-        currency: body.currency || 'USD',
-        status: 'OPEN',
-      })
-      .returning();
-
-    await db
-      .update(orders)
-      .set({
-        workflowStatus: order.workflowStatus === 'DELIVERED' ? 'AR_AP_OPEN' : order.workflowStatus,
-      })
-      .where(eq(orders.id, body.orderId));
-    await recomputeOrderWorkflowStatus(body.orderId);
-
+    const body = await req.json();
+    const data = commercialInvoiceSchema.parse(body);
+    const saved = await createCommercialInvoice(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

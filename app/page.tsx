@@ -6,7 +6,7 @@ import { PdfUploader } from '@/components/pdf-viewer/pdf-uploader';
 import { OrderForm } from '@/components/order-form/order-form';
 import { FileList } from '@/components/sidebar/file-list';
 import { useOrders } from '@/components/orders-provider';
-import { FileText } from 'lucide-react';
+import { FileText, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
@@ -95,10 +95,29 @@ export default function Home() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
-          {/* Case 1: No Orders (and no active ID) -> Large Uploader */}
+          {/* Case 1: No Orders (and no active ID) -> Home Actions */}
           {orders.length === 0 && (
-            <div className="flex-1 p-8 bg-muted/10">
-              <PdfUploader onFilesSelect={handleFilesSelect} />
+            <div className="flex-1 p-8 bg-muted/10 flex items-center justify-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 max-w-5xl w-full gap-8">
+                {/* PDF Uploader handles its own sizing within the grid cell */}
+                <PdfUploader onFilesSelect={handleFilesSelect} />
+
+                {/* Dashboard Link tiled directly next to it */}
+                <div className="h-full w-full p-6 flex flex-col items-center justify-center">
+                  <Link
+                    href="/dashboard"
+                    className="w-full max-w-md p-12 border-2 border-transparent rounded-xl bg-card shadow-sm hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 flex flex-col items-center justify-center text-center group min-h-[300px]"
+                  >
+                    <div className="h-16 w-16 mb-6 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                      <Activity className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-semibold tracking-tight mb-2">View Dashboard</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Access the central command center to manage active orders, logistics, and finances.
+                    </p>
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
 

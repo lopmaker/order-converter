@@ -23,9 +23,6 @@ export function FinanceTab({
     payments: PaymentRow[];
     busyAction: string | null;
     actions: {
-        createAr: () => void;
-        createVendorAp: () => void;
-        createLogisticsAp: () => void;
         editFinanceDoc: (
             targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL',
             doc: DocSummary
@@ -132,30 +129,6 @@ export function FinanceTab({
 
     return (
         <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-3">
-                <Button
-                    variant="outline"
-                    disabled={busyAction === 'CREATE_AR'}
-                    onClick={actions.createAr}
-                >
-                    {busyAction === 'CREATE_AR' ? 'Creating...' : 'Create AR'}
-                </Button>
-                <Button
-                    variant="outline"
-                    disabled={busyAction === 'CREATE_VENDOR_AP'}
-                    onClick={actions.createVendorAp}
-                >
-                    {busyAction === 'CREATE_VENDOR_AP' ? 'Creating...' : 'Create Vendor AP'}
-                </Button>
-                <Button
-                    variant="outline"
-                    disabled={busyAction === 'CREATE_LOGISTICS_AP'}
-                    onClick={actions.createLogisticsAp}
-                >
-                    {busyAction === 'CREATE_LOGISTICS_AP' ? 'Creating...' : 'Create 3PL AP'}
-                </Button>
-            </div>
-
             <Card>
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Finance Snapshot</CardTitle>

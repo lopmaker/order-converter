@@ -8,7 +8,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Download, FileText, Printer } from 'lucide-react';
+import { Download, FileText, Printer, ChevronRight, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import {
     OrderDetails,
     ContainerRow,
@@ -39,21 +40,27 @@ export function OrderHeader({
 }) {
     return (
         <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="space-y-1">
+            <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors w-fit">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Dashboard
+            </Link>
+            <div className="flex flex-wrap items-center justify-between gap-6">
+                <div className="space-y-1.5 border-l-4 border-primary pl-4">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-tight">Order {order.vpoNumber}</h1>
-                        <Badge variant={statusBadgeVariant(order.workflowStatus)}>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Order {order.vpoNumber}</h1>
+                        <Badge variant={statusBadgeVariant(order.workflowStatus)} className="rounded-md px-2 py-0.5 shadow-sm text-xs font-medium">
                             {order.workflowStatus || 'OPEN'}
                         </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        {order.customerName} &larr; {order.supplierName}
+                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <span>{order.customerName}</span>
+                        <ChevronRight className="h-3 w-3 opacity-50" />
+                        <span>{order.supplierName}</span>
                     </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:items-end">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 bg-muted/30 p-1.5 rounded-lg border border-border/50">
                         <Button
                             variant="outline"
                             size="sm"
@@ -81,27 +88,28 @@ export function OrderHeader({
                             onClick={() =>
                                 actions.rollbackWorkflow(
                                     'UNDO_START_TRANSIT',
-                                    'Undo IN_TRANSIT status? Removes ETAs.'
+                                    'Undo Ship Order? This reverts the status to OPEN and removes ETAs.'
                                 )
                             }
                         >
-                            Undo Transit
+                            Undo Ship Order
                         </Button>
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="ghost"
+                            className="h-7 text-xs hover:bg-destructive/10 hover:text-destructive transition-colors"
                             onClick={() =>
                                 actions.rollbackWorkflow(
                                     'UNDO_SHIPPING_DOC',
-                                    'Undo Issue Doc? Deletes all auto-generated 3PL documents.'
+                                    'Undo Auto-Docs? This deletes the Auto-Generated Shipping & AP/AR Documents.'
                                 )
                             }
                         >
-                            Undo Issue Doc
+                            Undo Auto-Docs
                         </Button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 bg-card p-1.5 rounded-xl border shadow-sm">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-muted-foreground">
                                 Container Context:
@@ -127,26 +135,17 @@ export function OrderHeader({
 
                         <Button
                             size="sm"
-                            onClick={() => actions.triggerWorkflow('GENERATE_SHIPPING_DOC')}
-                            disabled={busyAction === 'TRIGGER_GENERATE_SHIPPING_DOC'}
-                        >
-                            {busyAction === 'TRIGGER_GENERATE_SHIPPING_DOC'
-                                ? 'Wait...'
-                                : '1. Issue Shipping Doc'}
-                        </Button>
-                        <Button
-                            size="sm"
                             onClick={() => actions.triggerWorkflow('START_TRANSIT')}
                             disabled={busyAction === 'TRIGGER_START_TRANSIT'}
                         >
-                            {busyAction === 'TRIGGER_START_TRANSIT' ? 'Wait...' : '2. Start Transit'}
+                            {busyAction === 'TRIGGER_START_TRANSIT' ? 'Wait...' : '1. Ship Order'}
                         </Button>
                         <Button
                             size="sm"
                             onClick={() => actions.triggerWorkflow('MARK_DELIVERED')}
                             disabled={busyAction === 'TRIGGER_MARK_DELIVERED'}
                         >
-                            {busyAction === 'TRIGGER_MARK_DELIVERED' ? 'Wait...' : '3. Mark Delivered'}
+                            {busyAction === 'TRIGGER_MARK_DELIVERED' ? 'Wait...' : '2. Mark Delivered'}
                         </Button>
                     </div>
                 </div>

@@ -3,6 +3,9 @@ import { db } from '@/db';
 import { containerAllocations, containers, logisticsBills, shippingDocuments } from '@/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
+import { containerSchema } from '@/lib/schemas';
+import { createContainer } from '@/services/logistics.service';
+import { z } from 'zod';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';
@@ -13,10 +16,10 @@ export async function GET(req: NextRequest) {
     const status = req.nextUrl.searchParams.get('status');
     const data = status
       ? await db
-          .select()
-          .from(containers)
-          .where(eq(containers.status, status))
-          .orderBy(desc(containers.createdAt))
+        .select()
+        .from(containers)
+        .where(eq(containers.status, status))
+        .orderBy(desc(containers.createdAt))
       : await db.select().from(containers).orderBy(desc(containers.createdAt));
 
     return NextResponse.json({ success: true, data });
@@ -27,37 +30,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as {
-      containerNo?: string;
-      vesselName?: string;
-      status?: string;
-      etd?: string;
-      eta?: string;
-      atd?: string;
-      ata?: string;
-      arrivalAtWarehouse?: string;
-    };
-
-    if (!body.containerNo?.trim()) {
-      return NextResponse.json({ error: 'containerNo is required' }, { status: 400 });
-    }
-
-    const [saved] = await db
-      .insert(containers)
-      .values({
-        containerNo: body.containerNo.trim(),
-        vesselName: body.vesselName?.trim() || null,
-        status: body.status || 'PLANNED',
-        etd: body.etd ? new Date(body.etd) : null,
-        eta: body.eta ? new Date(body.eta) : null,
-        atd: body.atd ? new Date(body.atd) : null,
-        ata: body.ata ? new Date(body.ata) : null,
-        arrivalAtWarehouse: body.arrivalAtWarehouse ? new Date(body.arrivalAtWarehouse) : null,
-      })
-      .returning();
-
+    const body = await req.json();
+    const data = containerSchema.parse(body);
+    const saved = await createContainer(data);
     return NextResponse.json({ success: true, data: saved });
   } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }

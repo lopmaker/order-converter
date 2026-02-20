@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Fragment } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,22 +51,68 @@ import { FinanceTab } from './workspace/tabs/finance-tab';
 import { TimelineTab } from './workspace/tabs/timeline-tab';
 import { OrderHeader } from './workspace/order-header';
 
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+  }
+  return res.json();
+};
+
 export function OrderWorkspace({ orderId }: { orderId: string }) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const { openPrompt, promptDialogProps } = usePromptDialog();
 
-  const [order, setOrder] = useState<OrderDetails | null>(null);
-  const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
-  const [shippingDocs, setShippingDocs] = useState<ShippingDocRow[]>([]);
-  const [allocations, setAllocations] = useState<AllocationRow[]>([]);
-  const [containers, setContainers] = useState<ContainerRow[]>([]);
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
-  const [payments, setPayments] = useState<PaymentRow[]>([]);
-
   const [containerActionId, setContainerActionId] = useState(AUTO_CONTAINER);
   const [isPoPreviewOpen, setIsPoPreviewOpen] = useState(false);
+
+  // SWR Hooks
+  const { data: orderRes, error: orderError, isLoading: orderLoading, mutate: mutateOrder } = useSWR(`/api/orders/${orderId}`, fetcher);
+  const { data: summaryRes, mutate: mutateSummary } = useSWR(`/api/finance/orders/${orderId}/summary`, fetcher);
+  const { data: docsRes, mutate: mutateDocs } = useSWR(`/api/logistics/shipping-docs?orderId=${orderId}`, fetcher);
+  const { data: allocRes, mutate: mutateAlloc } = useSWR(`/api/logistics/allocations?orderId=${orderId}`, fetcher);
+  const { data: containerRes, mutate: mutateContainers } = useSWR('/api/logistics/containers', fetcher);
+  const { data: timelineRes, mutate: mutateTimeline } = useSWR(`/api/orders/${orderId}/timeline`, fetcher);
+  const { data: paymentsRes, mutate: mutatePayments } = useSWR(`/api/finance/payments?orderId=${orderId}`, fetcher);
+
+  const error = orderError?.message || null;
+  const loading = orderLoading;
+
+  const order = useMemo(() => {
+    if (!orderRes) return null;
+    const normalizedOrder = orderRes as Partial<OrderDetails>;
+    return {
+      ...normalizedOrder,
+      items: Array.isArray(normalizedOrder.items) ? normalizedOrder.items : [],
+    } as OrderDetails;
+  }, [orderRes]);
+
+  const financeSummary = useMemo(() => {
+    return summaryRes?.success ? (summaryRes.data as FinanceSummary) : makeEmptyFinanceSummary();
+  }, [summaryRes]);
+
+  const shippingDocs = useMemo(() => {
+    return docsRes?.success && Array.isArray(docsRes.data) ? (docsRes.data as ShippingDocRow[]) : [];
+  }, [docsRes]);
+
+  const allocations = useMemo(() => {
+    return allocRes?.success && Array.isArray(allocRes.data) ? (allocRes.data as AllocationRow[]) : [];
+  }, [allocRes]);
+
+  const containers = useMemo(() => {
+    return containerRes?.success && Array.isArray(containerRes.data) ? (containerRes.data as ContainerRow[]) : [];
+  }, [containerRes]);
+
+  const timelineEvents = useMemo(() => {
+    return timelineRes?.success && Array.isArray(timelineRes.data?.events)
+      ? ((timelineRes.data as TimelineResponse).events as TimelineEvent[])
+      : [];
+  }, [timelineRes]);
+
+  const payments = useMemo(() => {
+    return paymentsRes?.success && Array.isArray(paymentsRes.data) ? (paymentsRes.data as PaymentRow[]) : [];
+  }, [paymentsRes]);
 
   const poData: ExtractedOrderData = useMemo(() => {
     if (!order) return { items: [] };
@@ -121,88 +169,24 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
   }, [containerActionId, relevantContainerOptions]);
 
   const loadWorkspace = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [orderRes, summaryRes, docsRes, allocRes, containerRes, timelineRes, paymentsRes] =
-        await Promise.all([
-          fetch(`/api/orders/${orderId}`, { cache: 'no-store' }),
-          fetch(`/api/finance/orders/${orderId}/summary`, { cache: 'no-store' }),
-          fetch(`/api/logistics/shipping-docs?orderId=${orderId}`, { cache: 'no-store' }),
-          fetch(`/api/logistics/allocations?orderId=${orderId}`, { cache: 'no-store' }),
-          fetch('/api/logistics/containers', { cache: 'no-store' }),
-          fetch(`/api/orders/${orderId}/timeline`, { cache: 'no-store' }),
-          fetch(`/api/finance/payments?orderId=${orderId}`, { cache: 'no-store' }),
-        ]);
-
-      const [
-        orderJson,
-        summaryJson,
-        docsJson,
-        allocJson,
-        containerJson,
-        timelineJson,
-        paymentsJson,
-      ] = await Promise.all([
-        orderRes.json().catch(() => ({})),
-        summaryRes.json().catch(() => ({})),
-        docsRes.json().catch(() => ({})),
-        allocRes.json().catch(() => ({})),
-        containerRes.json().catch(() => ({})),
-        timelineRes.json().catch(() => ({})),
-        paymentsRes.json().catch(() => ({})),
-      ]);
-
-      if (!orderRes.ok) {
-        throw new Error(orderJson.error || 'Failed to load order');
-      }
-
-      const normalizedOrder = orderJson as Partial<OrderDetails>;
-      setOrder({
-        ...normalizedOrder,
-        items: Array.isArray(normalizedOrder.items) ? normalizedOrder.items : [],
-      } as OrderDetails);
-      setFinanceSummary(
-        summaryRes.ok && summaryJson.success
-          ? (summaryJson.data as FinanceSummary)
-          : makeEmptyFinanceSummary()
-      );
-      setShippingDocs(
-        docsRes.ok && docsJson.success && Array.isArray(docsJson.data)
-          ? (docsJson.data as ShippingDocRow[])
-          : []
-      );
-      setAllocations(
-        allocRes.ok && allocJson.success && Array.isArray(allocJson.data)
-          ? (allocJson.data as AllocationRow[])
-          : []
-      );
-      setContainers(
-        containerRes.ok && containerJson.success && Array.isArray(containerJson.data)
-          ? (containerJson.data as ContainerRow[])
-          : []
-      );
-      setTimelineEvents(
-        timelineRes.ok && timelineJson.success && Array.isArray(timelineJson.data?.events)
-          ? ((timelineJson.data as TimelineResponse).events as TimelineEvent[])
-          : []
-      );
-      setPayments(
-        paymentsRes.ok && paymentsJson.success && Array.isArray(paymentsJson.data)
-          ? (paymentsJson.data as PaymentRow[])
-          : []
-      );
-    } catch (loadError: unknown) {
-      const message = loadError instanceof Error ? loadError.message : 'Failed to load workspace';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [orderId]);
-
-  useEffect(() => {
-    loadWorkspace();
-  }, [loadWorkspace]);
+    await Promise.all([
+      mutateOrder(),
+      mutateSummary(),
+      mutateDocs(),
+      mutateAlloc(),
+      mutateContainers(),
+      mutateTimeline(),
+      mutatePayments(),
+    ]);
+  }, [
+    mutateOrder,
+    mutateSummary,
+    mutateDocs,
+    mutateAlloc,
+    mutateContainers,
+    mutateTimeline,
+    mutatePayments,
+  ]);
 
   const runAction = async (key: string, fn: () => Promise<void>) => {
     setBusyAction(key);
@@ -211,7 +195,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       await loadWorkspace();
     } catch (actionError: unknown) {
       const message = actionError instanceof Error ? actionError.message : 'Action failed';
-      setError(message);
+      // Can't set global error easily now without a state for action errors, but we can alert or toast.
+      // SWR handles fetch errors gracefully.
+      alert(message);
     } finally {
       setBusyAction(null);
     }
@@ -238,41 +224,6 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     });
   };
 
-  const createAr = async () => {
-    await runAction('CREATE_AR', async () => {
-      const res = await fetch('/api/finance/commercial-invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      });
-      if (!res.ok) throw new Error(await readError(res, 'Failed to create AR'));
-    });
-  };
-
-  const createVendorAp = async () => {
-    await runAction('CREATE_VENDOR_AP', async () => {
-      const res = await fetch('/api/finance/vendor-bills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      });
-      if (!res.ok) throw new Error(await readError(res, 'Failed to create vendor AP'));
-    });
-  };
-
-  const createLogisticsAp = async () => {
-    await runAction('CREATE_LOGISTICS_AP', async () => {
-      const res = await fetch('/api/finance/logistics-bills', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          containerId: containerActionId === AUTO_CONTAINER ? undefined : containerActionId,
-        }),
-      });
-      if (!res.ok) throw new Error(await readError(res, 'Failed to create 3PL AP'));
-    });
-  };
 
   const payOutstanding = async (
     targetType: 'CUSTOMER_INVOICE' | 'VENDOR_BILL' | 'LOGISTICS_BILL',
@@ -410,7 +361,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount < 0) {
-      setError('Amount must be a valid number');
+      alert('Amount must be a valid number');
       return;
     }
 
@@ -451,7 +402,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError('Payment amount must be a positive number');
+      alert('Payment amount must be a positive number');
       return;
     }
 
@@ -514,9 +465,30 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-          Loading workspace...
+      <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+        <div className="sticky top-0 z-10 -mx-4 px-4 py-4 md:-mx-8 md:px-8 bg-background border-b shadow-sm">
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between w-full items-center">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-8 w-96" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="xl:col-span-1 space-y-6">
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+          </div>
+          <div className="xl:col-span-3 space-y-6">
+            <Skeleton className="h-12 w-full max-w-md rounded-xl" />
+            <Skeleton className="h-96 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );
@@ -541,8 +513,9 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     );
   }
 
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-6 pb-20">
+    {/* Header section with sticky support */}
+    <div className="sticky top-0 z-10 -mx-4 px-4 py-4 md:-mx-8 md:px-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b shadow-sm">
       <OrderHeader
         order={order}
         relevantContainerOptions={relevantContainerOptions}
@@ -555,81 +528,124 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
           rollbackWorkflow,
         }}
       />
-
-      {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
-      <Tabs defaultValue="overview" className="space-y-3">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="items">Items & Margin</TabsTrigger>
-          <TabsTrigger value="logistics">Logistics</TabsTrigger>
-          <TabsTrigger value="finance">Finance</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <OverviewTab
-            order={order}
-            hints={hints}
-            shippingDocs={shippingDocs}
-            allocations={allocations}
-            financeSummary={financeSummary}
-          />
-        </TabsContent>
-
-        <TabsContent value="items">
-          <ItemsTab order={order} />
-        </TabsContent>
-
-        <TabsContent value="logistics">
-          <LogisticsTab
-            shippingDocs={shippingDocs}
-            allocations={allocations}
-            relevantContainerOptions={relevantContainerOptions}
-            containerMap={containerMap}
-            busyAction={busyAction}
-            actions={{
-              editShippingDoc,
-              deleteShippingDoc,
-              editAllocation,
-              deleteAllocation,
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="finance">
-          <FinanceTab
-            financeSummary={financeSummary}
-            payments={payments}
-            busyAction={busyAction}
-            actions={{
-              createAr,
-              createVendorAp,
-              createLogisticsAp,
-              editFinanceDoc,
-              payOutstanding,
-              deleteFinanceDoc,
-              editPayment,
-              deletePayment,
-            }}
-          />
-        </TabsContent>
-
-        <TabsContent value="timeline">
-          <TimelineTab events={timelineEvents} />
-        </TabsContent>
-      </Tabs>
-
-      <PromptDialog {...promptDialogProps} />
-      <PoPreviewDialog
-        open={isPoPreviewOpen}
-        onOpenChange={setIsPoPreviewOpen}
-        data={poData}
-      />
     </div>
-  );
+
+    {/* Main Content Area - Split Panel Concept */}
+    <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+
+      {/* Left/Top Panel - Key Metrics & Timeline Summary */}
+      <div className="xl:col-span-1 space-y-6">
+        <Card className="shadow-sm border-muted/50 rounded-xl overflow-hidden">
+          <CardHeader className="bg-muted/30 pb-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Order Value</CardTitle>
+            <div className="text-3xl font-bold tracking-tight text-foreground">
+              {money(num(order.totalAmount))}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total Items</span>
+              <span className="font-medium">{order.items?.reduce((sum, item) => sum + num(item.quantity?.toString() || '0'), 0) || 0} pcs</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Est. Margin</span>
+              <span className="font-medium text-emerald-600">
+                {money(num(order.estimatedMargin))} ({num((order.estimatedMarginRate || 0).toString()) * 100}%)
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-muted/50 rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-base">Parties</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Buyer</div>
+              <div className="font-medium">{order.customerName || '—'}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Supplier</div>
+              <div className="font-medium">{order.supplierName || '—'}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Right/Main Panel - Tabbed Data Interface */}
+      <div className="xl:col-span-3">
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl w-full justify-start overflow-x-auto">
+            <TabsTrigger value="overview" className="rounded-lg px-6">Overview</TabsTrigger>
+            <TabsTrigger value="items" className="rounded-lg px-6">
+              Line Items
+              {order.items && order.items.length > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-background">{order.items.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="logistics" className="rounded-lg px-6">Logistics</TabsTrigger>
+            <TabsTrigger value="finance" className="rounded-lg px-6">Finance</TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-lg px-6">Timeline</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <OverviewTab
+              order={order}
+              hints={hints}
+              shippingDocs={shippingDocs}
+              allocations={allocations}
+              financeSummary={financeSummary}
+            />
+          </TabsContent>
+
+          <TabsContent value="items">
+            <ItemsTab order={order} />
+          </TabsContent>
+
+          <TabsContent value="logistics">
+            <LogisticsTab
+              shippingDocs={shippingDocs}
+              allocations={allocations}
+              relevantContainerOptions={relevantContainerOptions}
+              containerMap={containerMap}
+              busyAction={busyAction}
+              actions={{
+                editShippingDoc,
+                deleteShippingDoc,
+                editAllocation,
+                deleteAllocation,
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="finance">
+            <FinanceTab
+              financeSummary={financeSummary}
+              payments={payments}
+              busyAction={busyAction}
+              actions={{
+                editFinanceDoc,
+                payOutstanding,
+                deleteFinanceDoc,
+                editPayment,
+                deletePayment,
+              }}
+            />
+          </TabsContent>
+
+          <TabsContent value="timeline">
+            <TimelineTab events={timelineEvents} />
+          </TabsContent>
+        </Tabs>
+
+        <PromptDialog {...promptDialogProps} />
+        <PoPreviewDialog
+          open={isPoPreviewOpen}
+          onOpenChange={setIsPoPreviewOpen}
+          data={poData}
+        />
+      </div>
+    </div>
+  </div>
 }
