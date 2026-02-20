@@ -548,12 +548,6 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
               <span className="text-muted-foreground">Total Items</span>
               <span className="font-medium">{order.items?.reduce((sum, item) => sum + num(item.quantity?.toString() || '0'), 0) || 0} pcs</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Est. Margin</span>
-              <span className="font-medium text-emerald-600">
-                {money(num(order.estimatedMargin))} ({num((order.estimatedMarginRate || 0).toString()) * 100}%)
-              </span>
-            </div>
           </CardContent>
         </Card>
 

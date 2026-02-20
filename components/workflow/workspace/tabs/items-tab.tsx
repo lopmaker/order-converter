@@ -35,7 +35,6 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
             ),
             duty: items.reduce((sum, item) => sum + num(item.estimatedDutyCost), 0),
             est3pl: items.reduce((sum, item) => sum + num(item.estimated3plCost), 0),
-            margin: items.reduce((sum, item) => sum + num(item.estimatedMargin), 0),
         };
     }, [order]);
 
@@ -43,7 +42,7 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
         <div className="space-y-4">
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Line Items and Estimated Margin</CardTitle>
+                    <CardTitle className="text-sm">Line Items</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
@@ -59,13 +58,12 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                 <TableHead className="text-right">Vendor $</TableHead>
                                 <TableHead className="text-right">Duty</TableHead>
                                 <TableHead className="text-right">Est 3PL</TableHead>
-                                <TableHead className="text-right">Est Margin</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {order.items.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                                    <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
                                         No items found
                                     </TableCell>
                                 </TableRow>
@@ -75,7 +73,6 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                         const qty = num(item.quantity) || 1;
                                         const customerUnit = num(item.customerUnitPrice);
                                         const vendorUnit = num(item.vendorUnitPrice);
-                                        const margin = num(item.estimatedMargin);
                                         const dutyCost = num(item.estimatedDutyCost);
                                         const total3pl = num(item.estimated3plCost);
 
@@ -107,17 +104,10 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                                     <TableCell className="text-right">{money(vendorUnit)}</TableCell>
                                                     <TableCell className="text-right">{money(dutyCost)}</TableCell>
                                                     <TableCell className="text-right">{money(total3pl)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <span
-                                                            className={margin >= 0 ? 'text-emerald-600' : 'text-destructive'}
-                                                        >
-                                                            {money(margin)}
-                                                        </span>
-                                                    </TableCell>
                                                 </TableRow>
                                                 {isExpanded && (
                                                     <TableRow>
-                                                        <TableCell colSpan={11} className="bg-muted/10 p-0">
+                                                        <TableCell colSpan={10} className="bg-muted/10 p-0">
                                                             <div className="flex items-center gap-6 border-b p-4 bg-slate-50/50 text-sm">
                                                                 <div className="flex-1 space-y-1">
                                                                     <span className="text-xs font-medium text-muted-foreground block">
@@ -165,7 +155,6 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                         <TableCell className="text-right">{money(itemTotals.vendorCost)}</TableCell>
                                         <TableCell className="text-right">{money(itemTotals.duty)}</TableCell>
                                         <TableCell className="text-right">{money(itemTotals.est3pl)}</TableCell>
-                                        <TableCell className="text-right">{money(itemTotals.margin)}</TableCell>
                                     </TableRow>
                                 </>
                             )}
