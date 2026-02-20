@@ -48,8 +48,18 @@ IMPORTANT RULES:
 3. Size breakdown should map size labels (XS, S, M, L, XL, 2XL, 3XL, 2T, 3T, 4T, 5, 6, 7, etc.) to their quantities.
 4. If a field is not found, use null for strings and 0 for numbers.
 5. Prices (unitPrice, extension) MUST be strings. Remove currency symbols ($) but keep commas and decimals if present.
-7. The "extension" is usually unitPrice × totalQty.
-8. **IMPORTANT**: Capture the 'Notes:' or 'Special Instructions' section into 'customerNotes'. 
+6. **CRITICAL - QUANTITY ACCURACY**: 
+   - The "totalQty" for each item is the SUM of all size quantities in that line item's size breakdown.
+   - Each line item row in the PO table has a "Qty" column that shows the totalQty. Use this value directly.
+   - Cross-verify: the sum of the size breakdown quantities MUST equal totalQty. If they don't match, trust the "Qty" column value.
+   - The PO typically has a "Subtotal" row at the bottom showing the grand total quantity and dollar amount. Use this to verify your extraction.
+   - Do NOT confuse the item's line number or row index with a quantity.
+7. The "extension" is usually unitPrice × totalQty. Use the value shown in the "Extension" column of the PO.
+8. **IMPORTANT - TABULAR DATA**: The PO uses a wide table format where size labels appear as column headers and size-specific quantities appear in cells below. Read each row carefully:
+   - Column order is typically: Cat, Product Class, Product Code, Color Ref, Disc, [size columns...], Qty, Price, Extension
+   - The "Qty" column comes AFTER all the size columns and contains the total quantity for that line.
+   - Some items have multiple color rows under the same product code.
+9. **IMPORTANT**: Capture the 'Notes' or 'Special Instructions' section into 'customerNotes'. 
    - **EXCLUDE**: Standard legal disclaimers, forced labor warnings (e.g., Uzbekistan, Turkmenistan, XUAR), or "contracting terms" that are normally part of the generic PO footer.
    - **INCLUDE**: Specific operational notes like 'Customer: [Name]', 'Testing: [Requirements]', 'Packing: [Method]', or any unique 'Additional Information'. 
    - Preserve original formatting and newlines for the included parts.`;

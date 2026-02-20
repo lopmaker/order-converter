@@ -836,6 +836,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     (sum, item) => sum + Number(item.vendorUnitPrice || 0) * Number(item.totalQty || 0),
     0
   );
+  const uniqueStyles = new Set(formData.items.map((item) => item.productCode).filter(Boolean)).size;
 
   // UI State for "Popups"
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -996,9 +997,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       {formData.items.length > 0 && (
         <div className="grid grid-cols-3 gap-3 px-5 pt-4 pb-2 shrink-0">
           <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-card p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Items</p>
-            <p className="text-xl font-bold tabular-nums mt-0.5">{formData.items.length}</p>
-            <p className="text-[10px] text-muted-foreground">{totalQty.toLocaleString()} pcs total</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Pcs</p>
+            <p className="text-xl font-bold tabular-nums mt-0.5">{totalQty.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">{uniqueStyles} styles</p>
           </div>
           <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales Value</p>
