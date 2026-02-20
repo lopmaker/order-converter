@@ -21,6 +21,7 @@ import { money, formatDate, num } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
 import { PoPreviewDialog } from '@/components/po-preview/po-preview-dialog';
 import { ExtractedOrderData } from '@/lib/parser';
+import { exportVendorExcel, exportVendorPdf } from '@/lib/vendor-po-export';
 import { Download, FileText, Printer } from 'lucide-react';
 import {
   OrderItem,
@@ -644,6 +645,8 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
           open={isPoPreviewOpen}
           onOpenChange={setIsPoPreviewOpen}
           data={poData}
+          onDownloadExcel={() => exportVendorExcel(poData)}
+          onDownloadPdf={() => exportVendorPdf(poData)}
         />
       </div>
     </div>

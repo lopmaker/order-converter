@@ -1483,7 +1483,13 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         </div>
       </div>
 
-      <PoPreviewDialog open={isPoPreviewOpen} onOpenChange={setIsPoPreviewOpen} data={formData} />
+      <PoPreviewDialog
+        open={isPoPreviewOpen}
+        onOpenChange={setIsPoPreviewOpen}
+        data={formData}
+        onDownloadExcel={() => handleDownloadExcel('vendor')}
+        onDownloadPdf={() => handleDownloadPdf('vendor')}
+      />
 
       {/* General Alert Dialog */}
       <Dialog

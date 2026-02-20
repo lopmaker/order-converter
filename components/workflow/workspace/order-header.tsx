@@ -67,7 +67,7 @@ export function OrderHeader({
                             onClick={() => actions.setIsPoPreviewOpen(true)}
                         >
                             <FileText className="mr-2 h-4 w-4" />
-                            View PO
+                            View Vendor PO
                         </Button>
                         <span className="text-xs text-muted-foreground">Rollback:</span>
                         <Button
