@@ -252,6 +252,22 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     });
   };
 
+  const handleVendorChange = async (newVendorName: string, newVendorAddress?: string | null) => {
+    await runAction(`CHANGE_VENDOR`, async () => {
+      const payload: any = { supplierName: newVendorName };
+      if (newVendorAddress !== undefined) {
+        payload.supplierAddress = newVendorAddress;
+      }
+
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await readError(res, 'Failed to update vendor'));
+    });
+  };
+
   const deleteAllocation = async (id: string) => {
     await runAction(`DELETE_ALLOCATION_${id}`, async () => {
       const res = await fetch(`/api/logistics/allocations?id=${id}`, { method: 'DELETE' });
@@ -527,6 +543,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
           setIsPoPreviewOpen,
           triggerWorkflow,
           rollbackWorkflow,
+          onVendorChange: handleVendorChange,
         }}
       />
     </div>

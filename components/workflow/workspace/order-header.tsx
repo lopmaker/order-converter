@@ -18,6 +18,7 @@ import {
     AUTO_CONTAINER,
 } from './types';
 import { statusBadgeVariant } from './utils';
+import { VendorSelector } from './vendor-selector';
 
 export function OrderHeader({
     order,
@@ -36,6 +37,7 @@ export function OrderHeader({
         setIsPoPreviewOpen: (open: boolean) => void;
         triggerWorkflow: (action: WorkflowAction) => void;
         rollbackWorkflow: (action: RollbackAction, msg: string) => void;
+        onVendorChange: (vendorName: string, vendorAddress?: string | null) => Promise<void>;
     };
 }) {
     return (
@@ -52,11 +54,15 @@ export function OrderHeader({
                             {order.workflowStatus || 'OPEN'}
                         </Badge>
                     </div>
-                    <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                         <span>{order.customerName}</span>
                         <ChevronRight className="h-3 w-3 opacity-50" />
-                        <span>{order.supplierName}</span>
-                    </p>
+                        <VendorSelector
+                            currentVendorName={order.supplierName || ''}
+                            onVendorChange={actions.onVendorChange}
+                            disabled={!!busyAction}
+                        />
+                    </div>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:items-end">

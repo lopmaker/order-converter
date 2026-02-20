@@ -1,5 +1,6 @@
 import { db } from '@/db';
-import { orders, orderItems, tariffRates } from '@/db/schema';
+import { orders, orderItems, tariffRates, vendors } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/workflow';
 import {
     deriveTariffKey,
@@ -23,6 +24,22 @@ export async function createOrderFromExtraction(data: SaveOrderPayload) {
     const tariffMap = new Map<string, number>(
         tariffRows.map((row) => [normalizeTariffKey(row.productClass), Number(row.tariffRate || 0)])
     );
+
+    // 1.5 Auto-save Vendor if new
+    if (data.supplierName) {
+        const existingVendor = await db
+            .select()
+            .from(vendors)
+            .where(eq(vendors.name, data.supplierName))
+            .limit(1);
+
+        if (existingVendor.length === 0) {
+            await db.insert(vendors).values({
+                name: data.supplierName,
+                address: data.supplierAddress || null,
+            });
+        }
+    }
 
     // 2. Item Compilation
     const itemPayloads = (data.items || []).map((item) => {

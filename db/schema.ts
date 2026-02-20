@@ -1,4 +1,21 @@
-import { pgTable, text, decimal, timestamp, integer, uuid, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, decimal, timestamp, integer, uuid, index, uniqueIndex } from 'drizzle-orm/pg-core';
+
+// Vendors Portfolio Table
+export const vendors = pgTable(
+  'vendors',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    name: text('name').notNull().unique(), // The company name used to link to supplierName
+    address: text('address'),
+    contactName: text('contact_name'),
+    email: text('email'),
+    phone: text('phone'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+  (table) => ({
+    nameIndex: uniqueIndex('vendor_name_idx').on(table.name),
+  })
+);
 
 // Orders Table
 export const orders = pgTable(
