@@ -10,11 +10,14 @@ import {
 } from '@/db/schema';
 import { desc, sql } from 'drizzle-orm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { OrdersTable } from '@/components/orders-table';
 import { BusinessFlowSnapshot, WorkflowMapCard } from '@/components/workflow/workflow-map-card';
 import { Package, DollarSign, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { type Order, type SerializedOrder } from '@/lib/types';
+import { getServerLocale } from '@/lib/i18n-server';
+import { translate } from '@/lib/i18n';
 
 const PAGE_SIZE = 10;
 
@@ -31,9 +34,10 @@ function serializeDatesInOrder(order: Order): SerializedOrder {
   };
 }
 
-
-
-async function getRecentOrders(page: number, pageSize: number): Promise<{ orders: SerializedOrder[]; hasMore: boolean }> {
+async function getRecentOrders(
+  page: number,
+  pageSize: number
+): Promise<{ orders: SerializedOrder[]; hasMore: boolean }> {
   const fetchedOrders: Order[] = await db.query.orders.findMany({
     orderBy: desc(orders.createdAt),
     limit: pageSize + 1,
@@ -41,7 +45,9 @@ async function getRecentOrders(page: number, pageSize: number): Promise<{ orders
   });
 
   const hasMore = fetchedOrders.length > pageSize;
-  const serializedOrders: SerializedOrder[] = fetchedOrders.slice(0, pageSize).map(serializeDatesInOrder);
+  const serializedOrders: SerializedOrder[] = fetchedOrders
+    .slice(0, pageSize)
+    .map(serializeDatesInOrder);
 
   return { orders: serializedOrders, hasMore };
 }
@@ -121,7 +127,7 @@ async function getStats() {
           else acc.open += row.count;
           return acc;
         },
-        { total: 0, open: 0, partial: 0, paid: 0 },
+        { total: 0, open: 0, partial: 0, paid: 0 }
       );
     };
 
@@ -139,7 +145,14 @@ async function getStats() {
 
     // Removed allOrders fetch from here, it will be fetched by OrdersTable directly later.
 
-    return { allOrders: [], totalSales, totalEstimatedMargin, totalOrders, chartData, flowSnapshot };
+    return {
+      allOrders: [],
+      totalSales,
+      totalEstimatedMargin,
+      totalOrders,
+      chartData,
+      flowSnapshot,
+    };
   } catch (error) {
     console.warn('Database not ready:', error);
     return {
@@ -162,87 +175,109 @@ async function getStats() {
 }
 
 export default async function DashboardPage() {
-  const { totalSales, totalEstimatedMargin, totalOrders, flowSnapshot } =
-    await getStats();
+  const locale = await getServerLocale();
+  const t = (key: string, fallback: string, params?: Record<string, string | number>) =>
+    translate(locale, key, fallback, params);
+
+  const { totalSales, totalOrders, flowSnapshot } = await getStats();
 
   const { orders: recentOrders, hasMore: initialHasMore } = await getRecentOrders(1, PAGE_SIZE);
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Sales Dashboard</h2>
+        <h2 className="text-3xl font-bold tracking-tight">
+          {t('Dashboard.title', 'Sales Dashboard')}
+        </h2>
         <div className="flex items-center space-x-2">
           <Link
             href="/dashboard/tariffs"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent h-9 px-4 py-2"
           >
-            Tariffs
+            {t('Dashboard.tariffs', 'Tariffs')}
           </Link>
           <Link
             href="/dashboard/logistics"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent h-9 px-4 py-2"
           >
-            Logistics
+            {t('Dashboard.logistics', 'Logistics')}
           </Link>
           <Link
             href="/dashboard/finance"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent h-9 px-4 py-2"
           >
-            Finance
+            {t('Dashboard.finance', 'Finance')}
           </Link>
           <Link
             href="/"
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
           >
-            New Order (Converter)
+            {t('Dashboard.newOrder', 'New Order (Converter)')}
           </Link>
+          <LanguageSwitcher />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t('Dashboard.totalSales', 'Total Sales')}
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${totalSales.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">All time revenue</p>
+            <p className="text-xs text-muted-foreground">
+              {t('Dashboard.allTimeRevenue', 'All time revenue')}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t('Dashboard.totalOrders', 'Total Orders')}
+            </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalOrders}</div>
-            <p className="text-xs text-muted-foreground">Processed & Confirmed</p>
+            <p className="text-xs text-muted-foreground">
+              {t('Dashboard.processedAndConfirmed', 'Processed & Confirmed')}
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t('Dashboard.recentActivity', 'Recent Activity')}
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Today</div>
-            <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString()}</p>
+            <div className="text-2xl font-bold">{t('Dashboard.today', 'Today')}</div>
+            <p className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-1 mt-8">
-        <WorkflowMapCard snapshot={flowSnapshot} />
+        <WorkflowMapCard snapshot={flowSnapshot} locale={locale} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-1">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
+            <CardTitle>{t('Dashboard.recentOrders', 'Recent Orders')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <OrdersTable initialOrders={recentOrders} initialHasMore={initialHasMore} pageSize={PAGE_SIZE} />
+            <OrdersTable
+              initialOrders={recentOrders}
+              initialHasMore={initialHasMore}
+              pageSize={PAGE_SIZE}
+            />
           </CardContent>
         </Card>
       </div>

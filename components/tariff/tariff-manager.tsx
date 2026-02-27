@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useI18n } from '@/components/locale-provider';
 
 interface TariffRow {
   id: string;
@@ -21,6 +22,8 @@ interface TariffRow {
 }
 
 export function TariffManager() {
+  const { t } = useI18n();
+
   const [rows, setRows] = useState<TariffRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -99,16 +102,19 @@ export function TariffManager() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={handleSync} disabled={loading}>
-          Sync Tariff Keys
+          {t('TariffManager.syncTariffKeys', 'Sync Tariff Keys')}
         </Button>
         <Input
           value={newClass}
           onChange={(e) => setNewClass(e.target.value)}
-          placeholder="Add tariff key (e.g. cn | junior tee | cotton-rich)"
+          placeholder={t(
+            'TariffManager.addTariffKeyPlaceholder',
+            'Add tariff key (e.g. cn | junior tee | cotton-rich)'
+          )}
           className="max-w-xs"
         />
         <Button variant="outline" onClick={handleAdd} disabled={loading || !newClass.trim()}>
-          Add Key
+          {t('TariffManager.addKey', 'Add Key')}
         </Button>
       </div>
 
@@ -116,18 +122,20 @@ export function TariffManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Tariff Key</TableHead>
-              <TableHead>Tariff Rate</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>{t('TariffManager.tariffKey', 'Tariff Key')}</TableHead>
+              <TableHead>{t('TariffManager.tariffRate', 'Tariff Rate')}</TableHead>
+              <TableHead>{t('TariffManager.source', 'Source')}</TableHead>
+              <TableHead>{t('TariffManager.notes', 'Notes')}</TableHead>
+              <TableHead className="text-right">{t('TariffManager.action', 'Action')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  {loading ? 'Loading...' : 'No tariff rows yet'}
+                  {loading
+                    ? t('TariffManager.loading', 'Loading...')
+                    : t('TariffManager.noRows', 'No tariff rows yet')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -175,7 +183,9 @@ export function TariffManager() {
                       onClick={() => handleSaveRow(row)}
                       disabled={savingId === row.id}
                     >
-                      {savingId === row.id ? 'Saving...' : 'Save'}
+                      {savingId === row.id
+                        ? t('TariffManager.saving', 'Saving...')
+                        : t('TariffManager.save', 'Save')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -184,7 +194,6 @@ export function TariffManager() {
           </TableBody>
         </Table>
       </div>
-
     </div>
   );
 }

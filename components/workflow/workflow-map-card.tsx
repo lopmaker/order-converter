@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChevronDown } from 'lucide-react';
+import { DEFAULT_LOCALE, translate, type Locale } from '@/lib/i18n';
 
 type BillStats = {
   total: number;
@@ -31,71 +32,101 @@ function getOtherStatusCount(snapshot: BusinessFlowSnapshot, flowStages: any[]):
   return Math.max(0, snapshot.totalOrders - knownTotal);
 }
 
-function BillCard({ title, stats }: { title: string; stats: BillStats }) {
+function BillCard({ title, stats, locale }: { title: string; stats: BillStats; locale: Locale }) {
+  const t = (key: string, fallback: string, params?: Record<string, string | number>) =>
+    translate(locale, key, fallback, params);
+
   return (
     <div className="rounded-lg border p-4">
       <div className="mb-2 text-sm font-semibold">{title}</div>
       <div className="space-y-1 text-xs text-muted-foreground">
-        <div>Total: {stats.total}</div>
-        <div>Open: {stats.open}</div>
-        <div>Partial: {stats.partial}</div>
-        <div>Paid: {stats.paid}</div>
+        <div>
+          {t('Workflow.total', 'Total')}: {stats.total}
+        </div>
+        <div>
+          {t('Workflow.open', 'Open')}: {stats.open}
+        </div>
+        <div>
+          {t('Workflow.partial', 'Partial')}: {stats.partial}
+        </div>
+        <div>
+          {t('Workflow.paid', 'Paid')}: {stats.paid}
+        </div>
       </div>
     </div>
   );
 }
 
-export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnapshot }) {
+export function WorkflowMapCard({
+  snapshot,
+  locale = DEFAULT_LOCALE,
+}: {
+  snapshot: BusinessFlowSnapshot;
+  locale?: Locale;
+}) {
+  const t = (key: string, fallback: string, params?: Record<string, string | number>) =>
+    translate(locale, key, fallback, params);
+
   const FLOW_STAGES = [
     {
       key: 'PO_UPLOADED',
-      title: '1. PO Uploaded',
-      trigger: 'Save order',
-      summary: 'Order and line items are created from customer PO.',
+      title: t('Workflow.stage1Title', '1. PO Uploaded'),
+      trigger: t('Workflow.stage1Trigger', 'Save order'),
+      summary: t('Workflow.stage1Summary', 'Order and line items are created from customer PO.'),
     },
     {
       key: 'SHIPPING_DOC_SENT',
-      title: '2. Shipping Doc Sent',
-      trigger: 'Send Shipping Doc',
-      summary: 'Shipping document is issued for 3PL booking.',
+      title: t('Workflow.stage2Title', '2. Shipping Doc Sent'),
+      trigger: t('Workflow.stage2Trigger', 'Send Shipping Doc'),
+      summary: t('Workflow.stage2Summary', 'Shipping document is issued for 3PL booking.'),
     },
     {
       key: 'IN_TRANSIT',
-      title: '3. In Transit',
-      trigger: 'Start Transit',
-      summary: 'Shipment is in transit and AR/AP core docs are opened.',
+      title: t('Workflow.stage3Title', '3. In Transit'),
+      trigger: t('Workflow.stage3Trigger', 'Start Transit'),
+      summary: t(
+        'Workflow.stage3Summary',
+        'Shipment is in transit and AR/AP core docs are opened.'
+      ),
     },
     {
       key: 'AR_AP_OPEN',
-      title: '4. AR/AP Open',
-      trigger: 'Mark Delivered',
-      summary: 'Delivered; payment collection and payouts are in progress.',
+      title: t('Workflow.stage4Title', '4. AR/AP Open'),
+      trigger: t('Workflow.stage4Trigger', 'Mark Delivered'),
+      summary: t(
+        'Workflow.stage4Summary',
+        'Delivered; payment collection and payouts are in progress.'
+      ),
     },
     {
       key: 'CLOSED',
-      title: '5. Closed',
-      trigger: 'Auto by payment completion',
-      summary: 'All related AR/AP documents are fully paid.',
+      title: t('Workflow.stage5Title', '5. Closed'),
+      trigger: t('Workflow.stage5Trigger', 'Auto by payment completion'),
+      summary: t('Workflow.stage5Summary', 'All related AR/AP documents are fully paid.'),
     },
   ];
 
   const ACTION_EFFECTS = [
     {
-      action: 'Send Shipping Doc',
-      result: 'Moves order to SHIPPING_DOC_SENT',
-      writes: 'Creates shipping_documents if missing.',
+      action: t('Workflow.actionSendShippingDoc', 'Send Shipping Doc'),
+      result: t('Workflow.actionSendShippingDocResult', 'Moves order to SHIPPING_DOC_SENT'),
+      writes: t('Workflow.actionSendShippingDocWrites', 'Creates shipping_documents if missing.'),
     },
     {
-      action: 'Start Transit',
-      result: 'Moves order to IN_TRANSIT',
-      writes:
-        'Creates commercial_invoices and vendor_bills if missing. Updates container to IN_TRANSIT when linked.',
+      action: t('Workflow.actionStartTransit', 'Start Transit'),
+      result: t('Workflow.actionStartTransitResult', 'Moves order to IN_TRANSIT'),
+      writes: t(
+        'Workflow.actionStartTransitWrites',
+        'Creates commercial_invoices and vendor_bills if missing. Updates container to IN_TRANSIT when linked.'
+      ),
     },
     {
-      action: 'Mark Delivered',
-      result: 'Moves order to AR_AP_OPEN',
-      writes:
-        'Sets delivered_at and creates logistics_bills if missing. Updates container arrival timestamps when linked.',
+      action: t('Workflow.actionMarkDelivered', 'Mark Delivered'),
+      result: t('Workflow.actionMarkDeliveredResult', 'Moves order to AR_AP_OPEN'),
+      writes: t(
+        'Workflow.actionMarkDeliveredWrites',
+        'Sets delivered_at and creates logistics_bills if missing. Updates container arrival timestamps when linked.'
+      ),
     },
   ];
 
@@ -123,9 +154,12 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
         <summary className="cursor-pointer list-none">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Live Business Flow</CardTitle>
+              <CardTitle>{t('Workflow.cardTitle', 'Live Business Flow')}</CardTitle>
               <CardDescription>
-                Real-time status of orders and financial documents
+                {t(
+                  'Workflow.cardDescription',
+                  'Real-time status of orders and financial documents'
+                )}
               </CardDescription>
             </div>
             <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform [[open]>&]:rotate-180" />
@@ -133,18 +167,30 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
         </summary>
         <CardContent className="space-y-6 pt-0">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="outline">Total Orders: {snapshot.totalOrders}</Badge>
-            <Badge variant="outline">Shipping Docs: {snapshot.shippingDocs}</Badge>
-            <Badge variant="outline">Payments: {snapshot.payments}</Badge>
+            <Badge variant="outline">
+              {t('Workflow.totalOrders', 'Total Orders: {count}', { count: snapshot.totalOrders })}
+            </Badge>
+            <Badge variant="outline">
+              {t('Workflow.shippingDocs', 'Shipping Docs: {count}', {
+                count: snapshot.shippingDocs,
+              })}
+            </Badge>
+            <Badge variant="outline">
+              {t('Workflow.payments', 'Payments: {count}', { count: snapshot.payments })}
+            </Badge>
             {otherStatusCount > 0 && (
-              <Badge variant="destructive">Other Status: {otherStatusCount}</Badge>
+              <Badge variant="destructive">
+                {t('Workflow.otherStatus', 'Other Status: {count}', { count: otherStatusCount })}
+              </Badge>
             )}
           </div>
 
           {bottleneck && (
             <div className="rounded-lg border bg-muted/20 p-3 text-xs">
-              <span className="font-semibold">Current Bottleneck:</span> {bottleneck.title} (
-              {bottleneck.count} orders)
+              <span className="font-semibold">
+                {t('Workflow.currentBottleneck', 'Current Bottleneck:')}
+              </span>{' '}
+              {bottleneck.title} ({bottleneck.count} {t('Workflow.ordersSuffix', 'orders')})
             </div>
           )}
 
@@ -157,10 +203,12 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
                   <div className="mb-2 text-[11px] text-muted-foreground">{stage.summary}</div>
                   <div className="mb-2">
                     <Badge variant="secondary" className="text-[10px]">
-                      {count} orders
+                      {count} {t('Workflow.ordersSuffix', 'orders')}
                     </Badge>
                   </div>
-                  <div className="text-[11px] text-muted-foreground">Trigger: {stage.trigger}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {t('Workflow.trigger', 'Trigger: {trigger}', { trigger: stage.trigger })}
+                  </div>
                 </div>
               );
             })}
@@ -168,9 +216,11 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
 
           <div className="rounded-lg border">
             <div className="grid grid-cols-12 border-b bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground">
-              <div className="col-span-3">Button</div>
-              <div className="col-span-3">Status Result</div>
-              <div className="col-span-6">Database Side Effect</div>
+              <div className="col-span-3">{t('Workflow.button', 'Button')}</div>
+              <div className="col-span-3">{t('Workflow.statusResult', 'Status Result')}</div>
+              <div className="col-span-6">
+                {t('Workflow.databaseSideEffect', 'Database Side Effect')}
+              </div>
             </div>
             {ACTION_EFFECTS.map((row) => (
               <div
@@ -185,13 +235,24 @@ export async function WorkflowMapCard({ snapshot }: { snapshot: BusinessFlowSnap
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <BillCard title="Commercial Invoice (AR)" stats={snapshot.commercialInvoices} />
-            <BillCard title="Vendor Bill (AP)" stats={snapshot.vendorBills} />
-            <BillCard title="3PL Bill (AP)" stats={snapshot.logisticsBills} />
+            <BillCard
+              title={t('Workflow.commercialInvoice', 'Commercial Invoice (AR)')}
+              stats={snapshot.commercialInvoices}
+              locale={locale}
+            />
+            <BillCard
+              title={t('Workflow.vendorBill', 'Vendor Bill (AP)')}
+              stats={snapshot.vendorBills}
+              locale={locale}
+            />
+            <BillCard
+              title={t('Workflow.thirdPartyBill', '3PL Bill (AP)')}
+              stats={snapshot.logisticsBills}
+              locale={locale}
+            />
           </div>
         </CardContent>
       </details>
     </Card>
   );
 }
-

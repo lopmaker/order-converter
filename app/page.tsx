@@ -5,11 +5,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { PdfUploader } from '@/components/pdf-viewer/pdf-uploader';
 import { OrderForm } from '@/components/order-form/order-form';
 import { FileList } from '@/components/sidebar/file-list';
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { useOrders } from '@/components/orders-provider';
+import { useI18n } from '@/components/locale-provider';
 import { FileText, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
+  const { t } = useI18n();
   const { orders, activeOrderId, setActiveOrderId, addOrders, removeOrder, updateOrder } =
     useOrders();
 
@@ -64,9 +67,17 @@ export default function Home() {
           <span className="font-semibold text-sm tracking-tight">OrderAI</span>
         </div>
         <nav>
-          <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-            <Link href="/dashboard">Dashboard →</Link>
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Link href="/dashboard">{t('HomePage.dashboardLink', 'Dashboard')} →</Link>
+            </Button>
+            <LanguageSwitcher />
+          </div>
         </nav>
       </header>
 
@@ -111,9 +122,14 @@ export default function Home() {
                     <div className="h-16 w-16 mb-6 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
                       <Activity className="h-8 w-8 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold tracking-tight mb-2">View Dashboard</h3>
+                    <h3 className="text-xl font-semibold tracking-tight mb-2">
+                      {t('HomePage.viewDashboard', 'View Sales Dashboard')}
+                    </h3>
                     <p className="text-sm text-muted-foreground max-w-xs">
-                      Access the central command center to manage active orders, logistics, and finances.
+                      {t(
+                        'HomePage.dashboardCardDescription',
+                        'Access the central command center to manage active orders, logistics, and finances.'
+                      )}
                     </p>
                   </Link>
                 </div>
@@ -130,7 +146,9 @@ export default function Home() {
                 <div className="w-[40%] h-full flex flex-col border-r bg-muted/20">
                   <div className="p-2 border-b text-xs flex justify-between bg-background">
                     <span className="font-semibold truncate">
-                      {activeOrder.fileName || activeOrder.file?.name || 'Unknown File'}
+                      {activeOrder.fileName ||
+                        activeOrder.file?.name ||
+                        t('HomePage.unknownFile', 'Unknown File')}
                     </span>
                   </div>
                   {activeOrder.file ? (
@@ -141,10 +159,14 @@ export default function Home() {
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center gap-3">
-                      <p className="font-medium">PDF Preview Unavailable</p>
-                      <p className="text-xs">The file was not persisted after reload.</p>
+                      <p className="font-medium">
+                        {t('HomePage.pdfPreviewUnavailable', 'PDF Preview Unavailable')}
+                      </p>
+                      <p className="text-xs">
+                        {t('HomePage.fileNotPersisted', 'The file was not persisted after reload.')}
+                      </p>
                       <label className="cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
-                        Re-upload PDF
+                        {t('HomePage.reuploadPdf', 'Re-upload PDF')}
                         <input
                           type="file"
                           accept=".pdf"
@@ -180,9 +202,14 @@ export default function Home() {
           {orders.length > 0 && !activeOrderId && (
             <div className="flex-1 p-8 bg-muted/10 flex flex-col items-center justify-center">
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-semibold">Your Orders</h2>
+                <h2 className="text-2xl font-semibold">
+                  {t('HomePage.yourOrders', 'Your Orders')}
+                </h2>
                 <p className="text-muted-foreground">
-                  Select an order from the sidebar to edit, or upload more.
+                  {t(
+                    'HomePage.selectOrderHint',
+                    'Select an order from the sidebar to edit, or upload more.'
+                  )}
                 </p>
               </div>
               <div className="w-full max-w-xl">

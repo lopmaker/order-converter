@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useI18n } from '@/components/locale-provider';
 import useSWR from 'swr';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +63,7 @@ const fetcher = async (url: string) => {
 };
 
 export function OrderWorkspace({ orderId }: { orderId: string }) {
+  const { t } = useI18n();
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const { openPrompt, promptDialogProps } = usePromptDialog();
 
@@ -195,7 +197,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       await fn();
       await loadWorkspace();
     } catch (actionError: unknown) {
-      const message = actionError instanceof Error ? actionError.message : 'Action failed';
+      const message = actionError instanceof Error ? actionError.message : t('OrderWorkspace.actionFailed', 'Action failed');
       // Can't set global error easily now without a state for action errors, but we can alert or toast.
       // SWR handles fetch errors gracefully.
       alert(message);
@@ -299,14 +301,14 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   const editShippingDoc = async (row: ShippingDocRow) => {
     const result = await openPrompt({
-      title: 'Edit Shipping Document',
+      title: t('OrderWorkspace.editShippingDocTitle', 'Edit Shipping Document'),
       fields: [
-        { key: 'status', label: 'Status', defaultValue: row.status || 'ISSUED' },
+        { key: 'status', label: t('OrderWorkspace.status', 'Status'), defaultValue: row.status || 'ISSUED' },
         {
           key: 'issueDate',
-          label: 'Issue date (YYYY-MM-DD)',
+          label: t('OrderWorkspace.issueDateTime', 'Issue date (YYYY-MM-DD)'),
           defaultValue: row.issueDate ? new Date(row.issueDate).toISOString().slice(0, 10) : '',
-          placeholder: 'empty to clear',
+          placeholder: t('OrderWorkspace.emptyToClear', 'empty to clear'),
         },
       ],
     });
@@ -327,19 +329,19 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   const editAllocation = async (row: AllocationRow) => {
     const result = await openPrompt({
-      title: 'Edit Allocation',
+      title: t('OrderWorkspace.editAllocationTitle', 'Edit Allocation'),
       fields: [
         {
           key: 'qty',
-          label: 'Allocated Qty',
+          label: t('OrderWorkspace.allocatedQty', 'Allocated Qty'),
           defaultValue: row.allocatedQty !== null ? String(row.allocatedQty) : '',
-          placeholder: 'empty to clear',
+          placeholder: t('OrderWorkspace.emptyToClear', 'empty to clear'),
         },
         {
           key: 'amount',
-          label: 'Allocated Amount',
+          label: t('OrderWorkspace.allocatedAmount', 'Allocated Amount'),
           defaultValue: row.allocatedAmount || '',
-          placeholder: 'empty to clear',
+          placeholder: t('OrderWorkspace.emptyToClear', 'empty to clear'),
         },
       ],
     });
@@ -363,14 +365,14 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
     doc: DocSummary
   ) => {
     const result = await openPrompt({
-      title: 'Edit Document',
+      title: t('OrderWorkspace.editDocumentTitle', 'Edit Document'),
       fields: [
-        { key: 'amount', label: 'Amount', defaultValue: String(doc.amount) },
+        { key: 'amount', label: t('OrderWorkspace.amount', 'Amount'), defaultValue: String(doc.amount) },
         {
           key: 'dueDate',
-          label: 'Due date (YYYY-MM-DD)',
+          label: t('OrderWorkspace.paymentDate', 'Due date (YYYY-MM-DD)'),
           defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '',
-          placeholder: 'empty to clear',
+          placeholder: t('OrderWorkspace.emptyToClear', 'empty to clear'),
         },
       ],
     });
@@ -378,7 +380,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount < 0) {
-      alert('Amount must be a valid number');
+      alert(t('OrderWorkspace.amountMustBeValid', 'Amount must be a valid number'));
       return;
     }
 
@@ -403,23 +405,23 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   const editPayment = async (row: PaymentRow) => {
     const result = await openPrompt({
-      title: 'Edit Payment',
+      title: t('OrderWorkspace.editPaymentTitle', 'Edit Payment'),
       fields: [
-        { key: 'amount', label: 'Payment amount', defaultValue: String(num(row.amount)) },
+        { key: 'amount', label: t('OrderWorkspace.paymentAmount', 'Payment amount'), defaultValue: String(num(row.amount)) },
         {
           key: 'date',
-          label: 'Payment date (YYYY-MM-DD)',
+          label: t('OrderWorkspace.paymentDate', 'Payment date (YYYY-MM-DD)'),
           defaultValue: row.paymentDate ? new Date(row.paymentDate).toISOString().slice(0, 10) : '',
-          placeholder: 'empty to clear',
+          placeholder: t('OrderWorkspace.emptyToClear', 'empty to clear'),
         },
-        { key: 'method', label: 'Method', defaultValue: row.method || '', placeholder: 'optional' },
+        { key: 'method', label: t('OrderWorkspace.method', 'Method'), defaultValue: row.method || '', placeholder: t('OrderWorkspace.optional', 'optional') },
       ],
     });
     if (!result) return;
 
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      alert('Payment amount must be a positive number');
+      alert(t('OrderWorkspace.paymentMustBePositive', 'Payment amount must be a positive number'));
       return;
     }
 
@@ -518,7 +520,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
           {error}
         </div>
         <Link href="/dashboard" className="text-sm underline underline-offset-2">
-          Back to dashboard
+          {t('OrderWorkspace.backToDashboardLink', 'Back to dashboard')}
         </Link>
       </div>
     );
@@ -526,7 +528,7 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
 
   if (!order) {
     return (
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">Order not found.</div>
+      <div className="rounded-lg border p-4 text-sm text-muted-foreground">{t('OrderWorkspace.orderNotFound', 'Order not found.')}</div>
     );
   }
 
@@ -555,30 +557,30 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       <div className="xl:col-span-1 space-y-6">
         <Card className="shadow-sm border-muted/50 rounded-xl overflow-hidden">
           <CardHeader className="bg-muted/30 pb-4">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Order Value</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">{t('OrderWorkspace.orderValue', 'Order Value')}</CardTitle>
             <div className="text-3xl font-bold tracking-tight text-foreground">
               {money(num(order.totalAmount))}
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Items</span>
-              <span className="font-medium">{order.items?.reduce((sum, item) => sum + num(item.quantity?.toString() || '0'), 0) || 0} pcs</span>
+              <span className="text-muted-foreground">{t('OrderWorkspace.totalItems', 'Total Items')}</span>
+              <span className="font-medium">{order.items?.reduce((sum, item) => sum + num(item.quantity?.toString() || '0'), 0) || 0} {t('OrderWorkspace.pcs', 'pcs')}</span>
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-sm border-muted/50 rounded-xl">
           <CardHeader>
-            <CardTitle className="text-base">Parties</CardTitle>
+            <CardTitle className="text-base">{t('OrderWorkspace.parties', 'Parties')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Buyer</div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('OrderWorkspace.buyer', 'Buyer')}</div>
               <div className="font-medium">{order.customerName || '—'}</div>
             </div>
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Supplier</div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t('OrderWorkspace.supplier', 'Supplier')}</div>
               <div className="font-medium">{order.supplierName || '—'}</div>
             </div>
           </CardContent>
@@ -589,16 +591,16 @@ export function OrderWorkspace({ orderId }: { orderId: string }) {
       <div className="xl:col-span-3">
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl w-full justify-start overflow-x-auto">
-            <TabsTrigger value="overview" className="rounded-lg px-6">Overview</TabsTrigger>
+            <TabsTrigger value="overview" className="rounded-lg px-6">{t('OrderWorkspace.tabOverview', 'Overview')}</TabsTrigger>
             <TabsTrigger value="items" className="rounded-lg px-6">
-              Line Items
+              {t('OrderWorkspace.tabLineItems', 'Line Items')}
               {order.items && order.items.length > 0 && (
                 <Badge variant="secondary" className="ml-2 bg-background">{order.items.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="logistics" className="rounded-lg px-6">Logistics</TabsTrigger>
-            <TabsTrigger value="finance" className="rounded-lg px-6">Finance</TabsTrigger>
-            <TabsTrigger value="timeline" className="rounded-lg px-6">Timeline</TabsTrigger>
+            <TabsTrigger value="logistics" className="rounded-lg px-6">{t('OrderWorkspace.tabLogistics', 'Logistics')}</TabsTrigger>
+            <TabsTrigger value="finance" className="rounded-lg px-6">{t('OrderWorkspace.tabFinance', 'Finance')}</TabsTrigger>
+            <TabsTrigger value="timeline" className="rounded-lg px-6">{t('OrderWorkspace.tabTimeline', 'Timeline')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">

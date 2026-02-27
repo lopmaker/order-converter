@@ -1,19 +1,24 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { money, num, formatDate } from '@/lib/format';
 import { TimelineEvent } from '../types';
 import { statusBadgeVariant } from '../utils';
+import { useI18n } from '@/components/locale-provider';
 
 export function TimelineTab({ events }: { events: TimelineEvent[] }) {
+    const { t } = useI18n();
+
     return (
         <Card>
             <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Order Timeline</CardTitle>
+                <CardTitle className="text-sm">{t('OrderWorkspace.orderTimeline', 'Order Timeline')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
                 {events.length === 0 ? (
                     <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                        No timeline event yet.
+                        {t('OrderWorkspace.noTimelineEventYet', 'No timeline event yet.')}
                     </div>
                 ) : (
                     events.map((event) => (

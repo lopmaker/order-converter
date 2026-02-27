@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { formatDate } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
+import { useI18n } from '@/components/locale-provider';
 
 interface OrderOption {
   id: string;
@@ -88,6 +89,7 @@ interface OrderDetails {
 }
 
 export function LogisticsManager() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<OrderOption[]>([]);
   const [containers, setContainers] = useState<ContainerRow[]>([]);
   const [allocations, setAllocations] = useState<AllocationRow[]>([]);
@@ -264,21 +266,29 @@ export function LogisticsManager() {
 
   const editContainer = async (row: ContainerRow) => {
     const result = await openPrompt({
-      title: 'Edit Container',
+      title: t('LogisticsManager.editContainerTitle', 'Edit Container'),
       fields: [
-        { key: 'containerNo', label: 'Container No', defaultValue: row.containerNo || '' },
+        {
+          key: 'containerNo',
+          label: t('LogisticsManager.containerNo', 'Container No'),
+          defaultValue: row.containerNo || '',
+        },
         {
           key: 'vessel',
-          label: 'Vessel Name',
+          label: t('LogisticsManager.vesselName', 'Vessel Name'),
           defaultValue: row.vesselName || '',
-          placeholder: 'optional',
+          placeholder: t('LogisticsManager.optional', 'optional'),
         },
-        { key: 'status', label: 'Status', defaultValue: row.status || 'PLANNED' },
+        {
+          key: 'status',
+          label: t('LogisticsManager.status', 'Status'),
+          defaultValue: row.status || 'PLANNED',
+        },
         {
           key: 'eta',
-          label: 'ETA (YYYY-MM-DD)',
+          label: t('LogisticsManager.etaDate', 'ETA (YYYY-MM-DD)'),
           defaultValue: row.eta ? new Date(row.eta).toISOString().slice(0, 10) : '',
-          placeholder: 'optional',
+          placeholder: t('LogisticsManager.optional', 'optional'),
         },
       ],
     });
@@ -301,7 +311,11 @@ export function LogisticsManager() {
 
   const deleteContainer = async (row: ContainerRow) => {
     const ok = window.confirm(
-      `Delete container ${row.containerNo}? Linked allocations may be removed and linked docs may be detached.`
+      t(
+        'LogisticsManager.deleteContainerConfirm',
+        'Delete container {containerNo}? Linked allocations may be removed and linked docs may be detached.',
+        { containerNo: row.containerNo }
+      )
     );
     if (!ok) return;
 
@@ -382,27 +396,32 @@ export function LogisticsManager() {
       const payload = parsePayload(latestDoc?.payload || null);
       const Workbook = (await import('exceljs')).default.Workbook;
       const workbook = new Workbook();
-      const ws = workbook.addWorksheet('3PL Request');
+      const ws = workbook.addWorksheet(
+        t('LogisticsManager.export.threePlRequestSheet', '3PL Request')
+      );
       ws.columns = [{ width: 20 }, { width: 40 }, { width: 20 }, { width: 28 }];
 
       ws.mergeCells('A1:D1');
-      ws.getCell('A1').value = 'SHIPMENT BOOKING REQUEST (TO 3PL)';
+      ws.getCell('A1').value = t(
+        'LogisticsManager.export.shipmentBookingRequestTitle',
+        'SHIPMENT BOOKING REQUEST (TO 3PL)'
+      );
       ws.getCell('A1').font = { bold: true, size: 16 };
       ws.getCell('A1').alignment = { horizontal: 'center' };
 
-      ws.getCell('A3').value = 'Order';
+      ws.getCell('A3').value = t('LogisticsManager.export.order', 'Order');
       ws.getCell('B3').value = order.vpoNumber || '-';
-      ws.getCell('C3').value = 'Shipping Doc';
+      ws.getCell('C3').value = t('LogisticsManager.export.shippingDoc', 'Shipping Doc');
       ws.getCell('D3').value = latestDoc?.docNo || '-';
 
-      ws.getCell('A4').value = 'Customer';
+      ws.getCell('A4').value = t('LogisticsManager.export.customer', 'Customer');
       ws.getCell('B4').value = order.customerName || '-';
-      ws.getCell('C4').value = 'Supplier';
+      ws.getCell('C4').value = t('LogisticsManager.export.supplier', 'Supplier');
       ws.getCell('D4').value = order.supplierName || '-';
 
-      ws.getCell('A5').value = 'Ship To';
+      ws.getCell('A5').value = t('LogisticsManager.export.shipTo', 'Ship To');
       ws.getCell('B5').value = order.shipTo || '-';
-      ws.getCell('C5').value = 'Ship Via';
+      ws.getCell('C5').value = t('LogisticsManager.export.shipVia', 'Ship Via');
       ws.getCell('D5').value = order.shipVia || '-';
 
       ws.getCell('A6').value = 'ETD';
@@ -410,27 +429,47 @@ export function LogisticsManager() {
       ws.getCell('C6').value = 'ETA';
       ws.getCell('D6').value = getSafeDate(container?.eta || null);
 
-      ws.getCell('A7').value = 'Container';
-      ws.getCell('B7').value = container?.containerNo || payload.containerNo || 'TBD by 3PL';
-      ws.getCell('C7').value = 'Vessel';
-      ws.getCell('D7').value = container?.vesselName || payload.vesselName || 'TBD by 3PL';
+      ws.getCell('A7').value = t('LogisticsManager.export.container', 'Container');
+      ws.getCell('B7').value =
+        container?.containerNo ||
+        payload.containerNo ||
+        t('LogisticsManager.export.tbdBy3pl', 'TBD by 3PL');
+      ws.getCell('C7').value = t('LogisticsManager.export.vessel', 'Vessel');
+      ws.getCell('D7').value =
+        container?.vesselName ||
+        payload.vesselName ||
+        t('LogisticsManager.export.tbdBy3pl', 'TBD by 3PL');
 
-      ws.getCell('A9').value = '3PL Actions Required';
+      ws.getCell('A9').value = t('LogisticsManager.export.requiredActions', '3PL Actions Required');
       ws.getCell('A9').font = { bold: true };
-      ws.getCell('A10').value = '1) Confirm booking (container + vessel + schedule)';
-      ws.getCell('A11').value = '2) Provide warehouse entry notice after booking';
-      ws.getCell('A12').value = '3) Upload BOL and 7501 after vessel departure';
+      ws.getCell('A10').value = t(
+        'LogisticsManager.export.requiredAction1',
+        '1) Confirm booking (container + vessel + schedule)'
+      );
+      ws.getCell('A11').value = t(
+        'LogisticsManager.export.requiredAction2',
+        '2) Provide warehouse entry notice after booking'
+      );
+      ws.getCell('A12').value = t(
+        'LogisticsManager.export.requiredAction3',
+        '3) Upload BOL and 7501 after vessel departure'
+      );
       ws.mergeCells('A10:D10');
       ws.mergeCells('A11:D11');
       ws.mergeCells('A12:D12');
 
-      ws.getCell('A14').value = 'BOL Link';
+      ws.getCell('A14').value = t('LogisticsManager.export.bolLink', 'BOL Link');
       ws.getCell('B14').value = payload.bolUrl || '';
-      ws.getCell('C14').value = '7501 Link';
+      ws.getCell('C14').value = t('LogisticsManager.export.customs7501Link', '7501 Link');
       ws.getCell('D14').value = payload.customs7501Url || '';
 
       ws.addRow([]);
-      const headerRow = ws.addRow(['Style', 'Description', 'Qty', 'Amount']);
+      const headerRow = ws.addRow([
+        t('LogisticsManager.export.style', 'Style'),
+        t('LogisticsManager.export.description', 'Description'),
+        t('LogisticsManager.export.qty', 'Qty'),
+        t('LogisticsManager.export.amount', 'Amount'),
+      ]);
       headerRow.font = { bold: true };
       order.items.forEach((item) => {
         ws.addRow([
@@ -442,7 +481,12 @@ export function LogisticsManager() {
       });
       const totalQty = order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
       const totalAmount = order.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
-      const totalRow = ws.addRow(['TOTAL', '', totalQty, totalAmount]);
+      const totalRow = ws.addRow([
+        t('LogisticsManager.export.totalUpper', 'TOTAL'),
+        '',
+        totalQty,
+        totalAmount,
+      ]);
       totalRow.font = { bold: true };
       ws.getColumn(4).numFmt = '"$"#,##0.00';
 
@@ -474,25 +518,82 @@ export function LogisticsManager() {
       const doc = new jsPDF();
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('SHIPMENT BOOKING REQUEST (TO 3PL)', 105, 16, { align: 'center' });
+      doc.text(
+        t(
+          'LogisticsManager.export.shipmentBookingRequestTitle',
+          'SHIPMENT BOOKING REQUEST (TO 3PL)'
+        ),
+        105,
+        16,
+        { align: 'center' }
+      );
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Order: ${order.vpoNumber || '-'}`, 14, 28);
-      doc.text(`Shipping Doc: ${latestDoc?.docNo || '-'}`, 110, 28);
-      doc.text(`Customer: ${order.customerName || '-'}`, 14, 34);
-      doc.text(`Supplier: ${order.supplierName || '-'}`, 110, 34);
-      doc.text(`Ship To: ${order.shipTo || '-'}`, 14, 40);
-      doc.text(`Ship Via: ${order.shipVia || '-'}`, 110, 40);
+      doc.text(`${t('LogisticsManager.export.order', 'Order')}: ${order.vpoNumber || '-'}`, 14, 28);
       doc.text(
-        `Container: ${container?.containerNo || payload.containerNo || 'TBD by 3PL'}`,
+        `${t('LogisticsManager.export.shippingDoc', 'Shipping Doc')}: ${latestDoc?.docNo || '-'}`,
+        110,
+        28
+      );
+      doc.text(
+        `${t('LogisticsManager.export.customer', 'Customer')}: ${order.customerName || '-'}`,
+        14,
+        34
+      );
+      doc.text(
+        `${t('LogisticsManager.export.supplier', 'Supplier')}: ${order.supplierName || '-'}`,
+        110,
+        34
+      );
+      doc.text(`${t('LogisticsManager.export.shipTo', 'Ship To')}: ${order.shipTo || '-'}`, 14, 40);
+      doc.text(
+        `${t('LogisticsManager.export.shipVia', 'Ship Via')}: ${order.shipVia || '-'}`,
+        110,
+        40
+      );
+      doc.text(
+        `${t('LogisticsManager.export.container', 'Container')}: ${
+          container?.containerNo ||
+          payload.containerNo ||
+          t('LogisticsManager.export.tbdBy3pl', 'TBD by 3PL')
+        }`,
         14,
         46
       );
-      doc.text(`Vessel: ${container?.vesselName || payload.vesselName || 'TBD by 3PL'}`, 110, 46);
-      doc.text(`BOL Link: ${payload.bolUrl || '-'}`, 14, 52, { maxWidth: 180 });
-      doc.text(`7501 Link: ${payload.customs7501Url || '-'}`, 14, 58, { maxWidth: 180 });
-      doc.text('3PL Required: booking confirmation, warehouse notice, BOL + 7501 upload.', 14, 66);
+      doc.text(
+        `${t('LogisticsManager.export.vessel', 'Vessel')}: ${
+          container?.vesselName ||
+          payload.vesselName ||
+          t('LogisticsManager.export.tbdBy3pl', 'TBD by 3PL')
+        }`,
+        110,
+        46
+      );
+      doc.text(
+        `${t('LogisticsManager.export.bolLink', 'BOL Link')}: ${payload.bolUrl || '-'}`,
+        14,
+        52,
+        {
+          maxWidth: 180,
+        }
+      );
+      doc.text(
+        `${t('LogisticsManager.export.customs7501Link', '7501 Link')}: ${
+          payload.customs7501Url || '-'
+        }`,
+        14,
+        58,
+        { maxWidth: 180 }
+      );
+      doc.text(
+        t(
+          'LogisticsManager.export.requiredSummary',
+          '3PL Required: booking confirmation, warehouse notice, BOL + 7501 upload.'
+        ),
+        14,
+        66
+      );
 
       const rows = order.items.map((item) => [
         item.productCode || '-',
@@ -502,7 +603,14 @@ export function LogisticsManager() {
       ]);
       autoTable(doc, {
         startY: 72,
-        head: [['Style', 'Description', 'Qty', 'Amount']],
+        head: [
+          [
+            t('LogisticsManager.export.style', 'Style'),
+            t('LogisticsManager.export.description', 'Description'),
+            t('LogisticsManager.export.qty', 'Qty'),
+            t('LogisticsManager.export.amount', 'Amount'),
+          ],
+        ],
         body: rows,
         styles: { fontSize: 9 },
         columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
@@ -544,24 +652,38 @@ export function LogisticsManager() {
       inv.mergeCells('A1:G1');
       inv.getCell('A1').value = issuerName;
       inv.getCell('A2').value = issuerAddr;
-      inv.getCell('A4').value = 'COMMERCIAL INVOICE';
-      inv.getCell('A7').value = 'INVOICE TO:';
+      inv.getCell('A4').value = t(
+        'LogisticsManager.export.commercialInvoice',
+        'COMMERCIAL INVOICE'
+      );
+      inv.getCell('A7').value = t('LogisticsManager.export.invoiceTo', 'INVOICE TO:');
       inv.getCell('B7').value = order.supplierName || 'C-Life Group,Ltd.';
-      inv.getCell('F7').value = 'DATE:';
+      inv.getCell('F7').value = t('LogisticsManager.export.dateUpper', 'DATE:');
       inv.getCell('G7').value = getSafeDate(latestDoc?.issueDate || order.orderDate);
-      inv.getCell('A12').value = 'INV NO.:';
+      inv.getCell('A12').value = t('LogisticsManager.export.invNo', 'INV NO.:');
       inv.getCell('B12').value = latestDoc?.docNo || order.vpoNumber;
-      inv.getCell('F12').value = 'TERMS:';
+      inv.getCell('F12').value = t('LogisticsManager.export.termsUpper', 'TERMS:');
       inv.getCell('G12').value = order.paymentTerms || '';
-      inv.getCell('A13').value = 'REF NO.:';
+      inv.getCell('A13').value = t('LogisticsManager.export.refNo', 'REF NO.:');
       inv.getCell('B13').value = order.soReference || order.vpoNumber || '';
-      inv.getCell('F13').value = 'PORT OF DESTINATION:';
-      inv.getCell('G13').value = 'LONG BEACH,CA';
-      inv.getCell('F15').value = 'BL#:';
+      inv.getCell('F13').value = t(
+        'LogisticsManager.export.portOfDestination',
+        'PORT OF DESTINATION:'
+      );
+      inv.getCell('G13').value = t('LogisticsManager.export.longBeach', 'LONG BEACH,CA');
+      inv.getCell('F15').value = t('LogisticsManager.export.blNumber', 'BL#:');
       inv.getCell('G15').value = payload.bolNo || payload.bolUrl || '';
 
       const invHeader = inv.addRow([]);
-      invHeader.values = ['PO NO.', 'STYLE NO.', '', 'DESCRIPTION', 'QTY.', 'PRICE', 'AMOUNT'];
+      invHeader.values = [
+        t('LogisticsManager.export.poNo', 'PO NO.'),
+        t('LogisticsManager.export.styleNo', 'STYLE NO.'),
+        '',
+        t('LogisticsManager.export.descriptionUpper', 'DESCRIPTION'),
+        t('LogisticsManager.export.qtyUpper', 'QTY.'),
+        t('LogisticsManager.export.priceUpper', 'PRICE'),
+        t('LogisticsManager.export.amountUpper', 'AMOUNT'),
+      ];
       invHeader.font = { bold: true };
       order.items.forEach((item) => {
         const qty = Number(item.quantity || 0);
@@ -581,7 +703,15 @@ export function LogisticsManager() {
         (s, x) => s + Number(x.quantity || 0) * Number(x.customerUnitPrice || 0),
         0
       );
-      const invTotalRow = inv.addRow(['GRAND TOTAL', '', '', '', invTotalQty, '', invTotal]);
+      const invTotalRow = inv.addRow([
+        t('LogisticsManager.export.grandTotal', 'GRAND TOTAL'),
+        '',
+        '',
+        '',
+        invTotalQty,
+        '',
+        invTotal,
+      ]);
       invTotalRow.font = { bold: true };
       inv.getColumn(6).numFmt = '"$"#,##0.00';
       inv.getColumn(7).numFmt = '"$"#,##0.00';
@@ -589,23 +719,23 @@ export function LogisticsManager() {
       pl.mergeCells('A1:G1');
       pl.getCell('A1').value = issuerName;
       pl.getCell('A2').value = issuerAddr;
-      pl.getCell('A4').value = 'PACKING LIST';
-      pl.getCell('A7').value = 'CONSIGNEE:';
+      pl.getCell('A4').value = t('LogisticsManager.export.packingList', 'PACKING LIST');
+      pl.getCell('A7').value = t('LogisticsManager.export.consignee', 'CONSIGNEE:');
       pl.getCell('B7').value = order.shipTo || order.supplierAddress || '';
-      pl.getCell('A12').value = 'BL#:';
+      pl.getCell('A12').value = t('LogisticsManager.export.blNumber', 'BL#:');
       pl.getCell('B12').value = payload.bolNo || payload.bolUrl || '';
-      pl.getCell('D12').value = 'Container#:';
+      pl.getCell('D12').value = t('LogisticsManager.export.containerNumber', 'Container#:');
       pl.getCell('E12').value = container?.containerNo || payload.containerNo || '';
 
       const plHeader = pl.addRow([]);
       plHeader.values = [
-        'VPO/SO',
-        'Product Code',
-        'Color',
-        'Description',
-        'CTNS',
-        'QTY.',
-        'Total Pcs',
+        t('LogisticsManager.export.vpoSo', 'VPO/SO'),
+        t('LogisticsManager.export.productCode', 'Product Code'),
+        t('LogisticsManager.export.color', 'Color'),
+        t('LogisticsManager.export.description', 'Description'),
+        t('LogisticsManager.export.ctns', 'CTNS'),
+        t('LogisticsManager.export.qtyUpper', 'QTY.'),
+        t('LogisticsManager.export.totalPcs', 'Total Pcs'),
       ];
       plHeader.font = { bold: true };
       order.items.forEach((item) => {
@@ -621,7 +751,15 @@ export function LogisticsManager() {
         ]);
       });
       const plTotal = order.items.reduce((s, x) => s + Number(x.quantity || 0), 0);
-      const plTotalRow = pl.addRow(['TOTAL', '', '', '', '', '', plTotal]);
+      const plTotalRow = pl.addRow([
+        t('LogisticsManager.export.totalUpper', 'TOTAL'),
+        '',
+        '',
+        '',
+        '',
+        '',
+        plTotal,
+      ]);
       plTotalRow.font = { bold: true };
 
       const buffer = await workbook.xlsx.writeBuffer();
@@ -653,16 +791,42 @@ export function LogisticsManager() {
 
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('COMMERCIAL INVOICE', 105, 16, { align: 'center' });
+      doc.text(t('LogisticsManager.export.commercialInvoice', 'COMMERCIAL INVOICE'), 105, 16, {
+        align: 'center',
+      });
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`INV NO: ${latestDoc?.docNo || order.vpoNumber || ''}`, 14, 26);
-      doc.text(`REF: ${order.soReference || order.vpoNumber || ''}`, 110, 26);
-      doc.text(`BOL: ${payload.bolNo || '-'}`, 14, 32);
-      doc.text(`Container: ${container?.containerNo || payload.containerNo || '-'}`, 110, 32);
+      doc.text(
+        `${t('LogisticsManager.export.invNoNoColon', 'INV NO')}: ${
+          latestDoc?.docNo || order.vpoNumber || ''
+        }`,
+        14,
+        26
+      );
+      doc.text(
+        `${t('LogisticsManager.export.refNoShort', 'REF')}: ${order.soReference || order.vpoNumber || ''}`,
+        110,
+        26
+      );
+      doc.text(`${t('LogisticsManager.export.bolShort', 'BOL')}: ${payload.bolNo || '-'}`, 14, 32);
+      doc.text(
+        `${t('LogisticsManager.export.container', 'Container')}: ${
+          container?.containerNo || payload.containerNo || '-'
+        }`,
+        110,
+        32
+      );
       autoTable(doc, {
         startY: 38,
-        head: [['Style', 'Description', 'Qty', 'Price', 'Amount']],
+        head: [
+          [
+            t('LogisticsManager.export.style', 'Style'),
+            t('LogisticsManager.export.description', 'Description'),
+            t('LogisticsManager.export.qty', 'Qty'),
+            t('LogisticsManager.export.price', 'Price'),
+            t('LogisticsManager.export.amount', 'Amount'),
+          ],
+        ],
         body: order.items.map((item) => {
           const qty = Number(item.quantity || 0);
           const price = Number(item.customerUnitPrice || 0);
@@ -680,13 +844,30 @@ export function LogisticsManager() {
       doc.addPage();
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('PACKING LIST', 105, 16, { align: 'center' });
+      doc.text(t('LogisticsManager.export.packingList', 'PACKING LIST'), 105, 16, {
+        align: 'center',
+      });
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Ship To: ${order.shipTo || '-'}`, 14, 26, { maxWidth: 180 });
+      doc.text(
+        `${t('LogisticsManager.export.shipTo', 'Ship To')}: ${order.shipTo || '-'}`,
+        14,
+        26,
+        {
+          maxWidth: 180,
+        }
+      );
       autoTable(doc, {
         startY: 34,
-        head: [['VPO/SO', 'Product Code', 'Color', 'Description', 'Qty']],
+        head: [
+          [
+            t('LogisticsManager.export.vpoSo', 'VPO/SO'),
+            t('LogisticsManager.export.productCode', 'Product Code'),
+            t('LogisticsManager.export.color', 'Color'),
+            t('LogisticsManager.export.description', 'Description'),
+            t('LogisticsManager.export.qty', 'Qty'),
+          ],
+        ],
         body: order.items.map((item) => [
           `VPO-${order.vpoNumber || ''}`,
           item.productCode || '',
@@ -704,20 +885,28 @@ export function LogisticsManager() {
   const updateShippingDocLinks = async (row: ShippingDocRow) => {
     const payload = parsePayload(row.payload);
     const result = await openPrompt({
-      title: 'Shipping Document Links',
+      title: t('LogisticsManager.shippingDocumentLinks', 'Shipping Document Links'),
       fields: [
-        { key: 'bolUrl', label: 'BOL upload/download link', defaultValue: payload.bolUrl || '' },
+        {
+          key: 'bolUrl',
+          label: t('LogisticsManager.bolUploadLink', 'BOL upload/download link'),
+          defaultValue: payload.bolUrl || '',
+        },
         {
           key: 'customs7501Url',
-          label: '7501 upload/download link',
+          label: t('LogisticsManager.customs7501Link', '7501 upload/download link'),
           defaultValue: payload.customs7501Url || '',
         },
         {
           key: 'entryNoticeUrl',
-          label: 'Warehouse entry notice link',
+          label: t('LogisticsManager.entryNoticeLink', 'Warehouse entry notice link'),
           defaultValue: payload.entryNoticeUrl || '',
         },
-        { key: 'bolNo', label: 'BOL number', defaultValue: payload.bolNo || '' },
+        {
+          key: 'bolNo',
+          label: t('LogisticsManager.bolNumber', 'BOL number'),
+          defaultValue: payload.bolNo || '',
+        },
       ],
     });
     if (!result) return;
@@ -748,7 +937,7 @@ export function LogisticsManager() {
       <div className="grid gap-3 md:grid-cols-[2fr_2fr_1fr_1fr_1fr]">
         <Select value={selectedOrderId || undefined} onValueChange={setSelectedOrderId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select order (VPO)" />
+            <SelectValue placeholder={t('LogisticsManager.selectOrder', 'Select order (VPO)')} />
           </SelectTrigger>
           <SelectContent>
             {orders.map((order) => (
@@ -761,7 +950,12 @@ export function LogisticsManager() {
 
         <Select value={selectedContainerId || undefined} onValueChange={setSelectedContainerId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select container (optional)" />
+            <SelectValue
+              placeholder={t(
+                'LogisticsManager.selectContainerOptional',
+                'Select container (optional)'
+              )}
+            />
           </SelectTrigger>
           <SelectContent>
             {containers.map((container) => (
@@ -777,21 +971,27 @@ export function LogisticsManager() {
           disabled={!selectedOrderId || busyAction === 'SEND_DOC'}
           onClick={sendShippingDoc}
         >
-          {busyAction === 'SEND_DOC' ? 'Sending...' : 'Send Shipping Doc'}
+          {busyAction === 'SEND_DOC'
+            ? t('LogisticsManager.sending', 'Sending...')
+            : t('LogisticsManager.sendShippingDoc', 'Send Shipping Doc')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'START_TRANSIT'}
           onClick={startTransit}
         >
-          {busyAction === 'START_TRANSIT' ? 'Starting...' : 'Start Transit'}
+          {busyAction === 'START_TRANSIT'
+            ? t('LogisticsManager.starting', 'Starting...')
+            : t('LogisticsManager.startTransit', 'Start Transit')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'MARK_DELIVERED'}
           onClick={markDelivered}
         >
-          {busyAction === 'MARK_DELIVERED' ? 'Updating...' : 'Mark Delivered'}
+          {busyAction === 'MARK_DELIVERED'
+            ? t('LogisticsManager.updating', 'Updating...')
+            : t('LogisticsManager.markDelivered', 'Mark Delivered')}
         </Button>
       </div>
 
@@ -801,14 +1001,18 @@ export function LogisticsManager() {
           disabled={!selectedOrderId || busyAction === 'EXPORT_SHIP_REQ_XLSX'}
           onClick={exportShippingRequestExcel}
         >
-          {busyAction === 'EXPORT_SHIP_REQ_XLSX' ? 'Exporting...' : 'Export 3PL Request (Excel)'}
+          {busyAction === 'EXPORT_SHIP_REQ_XLSX'
+            ? t('LogisticsManager.exporting', 'Exporting...')
+            : t('LogisticsManager.export3plRequestExcel', 'Export 3PL Request (Excel)')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'EXPORT_SHIP_REQ_PDF'}
           onClick={exportShippingRequestPdf}
         >
-          {busyAction === 'EXPORT_SHIP_REQ_PDF' ? 'Exporting...' : 'Export 3PL Request (PDF)'}
+          {busyAction === 'EXPORT_SHIP_REQ_PDF'
+            ? t('LogisticsManager.exporting', 'Exporting...')
+            : t('LogisticsManager.export3plRequestPdf', 'Export 3PL Request (PDF)')}
         </Button>
         <Button
           variant="outline"
@@ -816,8 +1020,8 @@ export function LogisticsManager() {
           onClick={exportCustomerDocsExcel}
         >
           {busyAction === 'EXPORT_CUSTOMER_DOCS_XLSX'
-            ? 'Exporting...'
-            : 'Export Customer CI+PL (Excel)'}
+            ? t('LogisticsManager.exporting', 'Exporting...')
+            : t('LogisticsManager.exportCustomerCiPlExcel', 'Export Customer CI+PL (Excel)')}
         </Button>
         <Button
           variant="outline"
@@ -825,15 +1029,16 @@ export function LogisticsManager() {
           onClick={exportCustomerDocsPdf}
         >
           {busyAction === 'EXPORT_CUSTOMER_DOCS_PDF'
-            ? 'Exporting...'
-            : 'Export Customer CI+PL (PDF)'}
+            ? t('LogisticsManager.exporting', 'Exporting...')
+            : t('LogisticsManager.exportCustomerCiPlPdf', 'Export Customer CI+PL (PDF)')}
         </Button>
       </div>
 
       {selectedOrder && (
         <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-          Current Order:{' '}
-          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
+          {t('LogisticsManager.currentOrder', 'Current Order')}:{' '}
+          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
+          {t('LogisticsManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
             {selectedOrder.workflowStatus || 'PO_UPLOADED'}
           </span>
@@ -842,12 +1047,12 @@ export function LogisticsManager() {
 
       <div className="grid gap-3 md:grid-cols-3">
         <Input
-          placeholder="New Container No"
+          placeholder={t('LogisticsManager.newContainerNo', 'New Container No')}
           value={containerNo}
           onChange={(e) => setContainerNo(e.target.value)}
         />
         <Input
-          placeholder="Vessel Name"
+          placeholder={t('LogisticsManager.vesselName', 'Vessel Name')}
           value={vesselName}
           onChange={(e) => setVesselName(e.target.value)}
         />
@@ -855,24 +1060,28 @@ export function LogisticsManager() {
           onClick={createContainer}
           disabled={!containerNo.trim() || busyAction === 'CREATE_CONTAINER'}
         >
-          {busyAction === 'CREATE_CONTAINER' ? 'Creating...' : 'Create Container'}
+          {busyAction === 'CREATE_CONTAINER'
+            ? t('LogisticsManager.creating', 'Creating...')
+            : t('LogisticsManager.createContainer', 'Create Container')}
         </Button>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
         <Input
-          placeholder="Allocated Qty (optional)"
+          placeholder={t('LogisticsManager.allocatedQtyOptional', 'Allocated Qty (optional)')}
           value={allocationQty}
           onChange={(e) => setAllocationQty(e.target.value)}
         />
         <div className="text-xs text-muted-foreground flex items-center">
-          Uses selected order + selected container
+          {t('LogisticsManager.usesSelected', 'Uses selected order + selected container')}
         </div>
         <Button
           onClick={allocateOrderToContainer}
           disabled={!selectedOrderId || !selectedContainerId || busyAction === 'ALLOCATE'}
         >
-          {busyAction === 'ALLOCATE' ? 'Allocating...' : 'Allocate Order to Container'}
+          {busyAction === 'ALLOCATE'
+            ? t('LogisticsManager.allocating', 'Allocating...')
+            : t('LogisticsManager.allocateOrderToContainer', 'Allocate Order to Container')}
         </Button>
       </div>
 
@@ -880,20 +1089,22 @@ export function LogisticsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Container</TableHead>
-              <TableHead>Vessel</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>ATD</TableHead>
-              <TableHead>ETA</TableHead>
-              <TableHead>Arrived WH</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>{t('LogisticsManager.container', 'Container')}</TableHead>
+              <TableHead>{t('LogisticsManager.vessel', 'Vessel')}</TableHead>
+              <TableHead>{t('LogisticsManager.status', 'Status')}</TableHead>
+              <TableHead>{t('LogisticsManager.atd', 'ATD')}</TableHead>
+              <TableHead>{t('LogisticsManager.etaDate', 'ETA (YYYY-MM-DD)')}</TableHead>
+              <TableHead>{t('LogisticsManager.arrivedWh', 'Arrived WH')}</TableHead>
+              <TableHead className="text-right">{t('LogisticsManager.action', 'Action')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {containers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                  {loading ? 'Loading...' : 'No containers yet'}
+                  {loading
+                    ? t('Common.loading', 'Loading...')
+                    : t('LogisticsManager.noContainers', 'No containers yet')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -913,7 +1124,9 @@ export function LogisticsManager() {
                         disabled={busyAction === `EDIT_CONTAINER_${row.id}`}
                         onClick={() => editContainer(row)}
                       >
-                        {busyAction === `EDIT_CONTAINER_${row.id}` ? 'Saving...' : 'Edit'}
+                        {busyAction === `EDIT_CONTAINER_${row.id}`
+                          ? t('LogisticsManager.saving', 'Saving...')
+                          : t('LogisticsManager.edit', 'Edit')}
                       </Button>
                       <Button
                         size="sm"
@@ -921,7 +1134,9 @@ export function LogisticsManager() {
                         disabled={busyAction === `DELETE_CONTAINER_${row.id}`}
                         onClick={() => deleteContainer(row)}
                       >
-                        {busyAction === `DELETE_CONTAINER_${row.id}` ? 'Deleting...' : 'Delete'}
+                        {busyAction === `DELETE_CONTAINER_${row.id}`
+                          ? t('LogisticsManager.deleting', 'Deleting...')
+                          : t('LogisticsManager.delete', 'Delete')}
                       </Button>
                     </div>
                   </TableCell>
@@ -936,19 +1151,19 @@ export function LogisticsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Shipping Doc</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Container</TableHead>
-              <TableHead>Issue Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>{t('LogisticsManager.shippingDoc', 'Shipping Doc')}</TableHead>
+              <TableHead>{t('LogisticsManager.order', 'Order')}</TableHead>
+              <TableHead>{t('LogisticsManager.container', 'Container')}</TableHead>
+              <TableHead>{t('LogisticsManager.issueDate', 'Issue Date')}</TableHead>
+              <TableHead>{t('LogisticsManager.status', 'Status')}</TableHead>
+              <TableHead className="text-right">{t('LogisticsManager.action', 'Action')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {shippingDocs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                  No shipping docs for this order
+                  {t('LogisticsManager.noShippingDocs', 'No shipping docs for this order')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -970,7 +1185,9 @@ export function LogisticsManager() {
                       disabled={busyAction === `UPDATE_DOC_LINKS_${row.id}`}
                       onClick={() => updateShippingDocLinks(row)}
                     >
-                      {busyAction === `UPDATE_DOC_LINKS_${row.id}` ? 'Saving...' : 'BOL/7501 Links'}
+                      {busyAction === `UPDATE_DOC_LINKS_${row.id}`
+                        ? t('LogisticsManager.saving', 'Saving...')
+                        : t('LogisticsManager.bol7501Links', 'BOL/7501 Links')}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -984,18 +1201,22 @@ export function LogisticsManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Container</TableHead>
-              <TableHead className="text-right">Allocated Qty</TableHead>
-              <TableHead className="text-right">Allocated Amount</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>{t('LogisticsManager.order', 'Order')}</TableHead>
+              <TableHead>{t('LogisticsManager.container', 'Container')}</TableHead>
+              <TableHead className="text-right">
+                {t('LogisticsManager.allocatedQty', 'Allocated Qty')}
+              </TableHead>
+              <TableHead className="text-right">
+                {t('LogisticsManager.allocatedAmount', 'Allocated Amount')}
+              </TableHead>
+              <TableHead>{t('LogisticsManager.created', 'Created')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {allocations.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
-                  No allocations for this order
+                  {t('LogisticsManager.noAllocations', 'No allocations for this order')}
                 </TableCell>
               </TableRow>
             ) : (

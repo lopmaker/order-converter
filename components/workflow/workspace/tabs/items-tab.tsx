@@ -1,3 +1,5 @@
+'use client';
+
 import { Fragment, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -13,8 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { money, num } from '@/lib/format';
 import { OrderDetails } from '../types';
+import { useI18n } from '@/components/locale-provider';
 
 export function ItemsTab({ order }: { order: OrderDetails }) {
+    const { t } = useI18n();
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
     const toggleExpand = (id: string) => {
@@ -42,29 +46,29 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
         <div className="space-y-4">
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Line Items</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.lineItems', 'Line Items')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[40px]"></TableHead>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Collection</TableHead>
-                                <TableHead>Material</TableHead>
-                                <TableHead className="text-right">Qty</TableHead>
-                                <TableHead className="text-right">Customer $</TableHead>
-                                <TableHead className="text-right">Vendor $</TableHead>
-                                <TableHead className="text-right">Duty</TableHead>
-                                <TableHead className="text-right">Est 3PL</TableHead>
+                                <TableHead>{t('OrderWorkspace.code', 'Code')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.description', 'Description')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.collection', 'Collection')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.material', 'Material')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.qty', 'Qty')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.customerPrice', 'Customer $')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.vendorPrice', 'Vendor $')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.duty', 'Duty')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.est3pl', 'Est 3PL')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {order.items.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
-                                        No items found
+                                        {t('OrderWorkspace.noItemsFound', 'No items found')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -111,31 +115,31 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                                             <div className="flex items-center gap-6 border-b p-4 bg-slate-50/50 text-sm">
                                                                 <div className="flex-1 space-y-1">
                                                                     <span className="text-xs font-medium text-muted-foreground block">
-                                                                        Tariff Info
+                                                                        {t('OrderWorkspace.tariffInfo', 'Tariff Info')}
                                                                     </span>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-medium">
                                                                             {(num(item.tariffRate) * 100).toFixed(1)}%
                                                                         </span>
                                                                         <Badge variant="outline" className="text-[10px] h-5">
-                                                                            {item.productClass || 'No Class'}
+                                                                            {item.productClass || t('OrderWorkspace.noClass', 'No Class')}
                                                                         </Badge>
                                                                     </div>
                                                                 </div>
 
                                                                 <div className="flex-1 space-y-1">
                                                                     <span className="text-xs font-medium text-muted-foreground block">
-                                                                        Duty
+                                                                        {t('OrderWorkspace.duty', 'Duty')}
                                                                     </span>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-muted-foreground text-xs">Per Unit:</span>
+                                                                        <span className="text-muted-foreground text-xs">{t('OrderWorkspace.perUnit', 'Per Unit:')}</span>
                                                                         <span className="font-medium">{money(dutyCost / qty)}</span>
                                                                     </div>
                                                                 </div>
 
                                                                 <div className="flex-1 space-y-1">
                                                                     <span className="text-xs font-medium text-muted-foreground block">
-                                                                        3PL Cost (Per Unit)
+                                                                        {t('OrderWorkspace.threePlCostPerUnit', '3PL Cost (Per Unit)')}
                                                                     </span>
                                                                     <div className="font-bold text-blue-700 text-base">
                                                                         {money(total3pl / qty)}
@@ -149,7 +153,7 @@ export function ItemsTab({ order }: { order: OrderDetails }) {
                                         );
                                     })}
                                     <TableRow className="bg-muted/30 font-medium">
-                                        <TableCell colSpan={5}>Totals</TableCell>
+                                        <TableCell colSpan={5}>{t('OrderWorkspace.totals', 'Totals')}</TableCell>
                                         <TableCell className="text-right">{itemTotals.qty}</TableCell>
                                         <TableCell className="text-right">{money(itemTotals.revenue)}</TableCell>
                                         <TableCell className="text-right">{money(itemTotals.vendorCost)}</TableCell>

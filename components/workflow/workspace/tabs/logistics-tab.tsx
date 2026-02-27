@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -12,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { money, num, formatDate } from '@/lib/format';
 import { ShippingDocRow, AllocationRow, ContainerRow } from '../types';
 import { statusBadgeVariant } from '../utils';
+import { useI18n } from '@/components/locale-provider';
 
 export function LogisticsTab({
     shippingDocs,
@@ -33,28 +36,30 @@ export function LogisticsTab({
         deleteAllocation: (id: string) => void;
     };
 }) {
+    const { t } = useI18n();
+
     return (
         <div className="space-y-4">
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Shipping Documents</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.shippingDocuments', 'Shipping Documents')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Doc No</TableHead>
-                                <TableHead>Container</TableHead>
-                                <TableHead>Issue Date</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead>{t('OrderWorkspace.docNo', 'Doc No')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.container', 'Container')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.issueDate', 'Issue Date')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.status', 'Status')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.action', 'Action')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {shippingDocs.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                                        No shipping document yet
+                                        {t('OrderWorkspace.noShippingDocYet', 'No shipping document yet')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -80,7 +85,7 @@ export function LogisticsTab({
                                                     disabled={busyAction === `EDIT_SHIPPING_DOC_${row.id}`}
                                                     onClick={() => actions.editShippingDoc(row)}
                                                 >
-                                                    {busyAction === `EDIT_SHIPPING_DOC_${row.id}` ? 'Saving...' : 'Edit'}
+                                                    {busyAction === `EDIT_SHIPPING_DOC_${row.id}` ? t('OrderWorkspace.saving', 'Saving...') : t('OrderWorkspace.edit', 'Edit')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -89,8 +94,8 @@ export function LogisticsTab({
                                                     onClick={() => actions.deleteShippingDoc(row.id)}
                                                 >
                                                     {busyAction === `DELETE_SHIPPING_DOC_${row.id}`
-                                                        ? 'Deleting...'
-                                                        : 'Delete'}
+                                                        ? t('OrderWorkspace.deleting', 'Deleting...')
+                                                        : t('OrderWorkspace.delete', 'Delete')}
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -104,24 +109,24 @@ export function LogisticsTab({
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Container Allocations</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.containerAllocationsTitle', 'Container Allocations')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Container</TableHead>
-                                <TableHead className="text-right">Allocated Qty</TableHead>
-                                <TableHead className="text-right">Allocated Amount</TableHead>
-                                <TableHead>Created</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead>{t('OrderWorkspace.container', 'Container')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.allocatedQty', 'Allocated Qty')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.allocatedAmount', 'Allocated Amount')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.created', 'Created')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.action', 'Action')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {allocations.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="py-6 text-center text-muted-foreground">
-                                        No allocations yet
+                                        {t('OrderWorkspace.noAllocationsYet', 'No allocations yet')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -143,7 +148,7 @@ export function LogisticsTab({
                                                     disabled={busyAction === `EDIT_ALLOCATION_${row.id}`}
                                                     onClick={() => actions.editAllocation(row)}
                                                 >
-                                                    {busyAction === `EDIT_ALLOCATION_${row.id}` ? 'Saving...' : 'Edit'}
+                                                    {busyAction === `EDIT_ALLOCATION_${row.id}` ? t('OrderWorkspace.saving', 'Saving...') : t('OrderWorkspace.edit', 'Edit')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -152,8 +157,8 @@ export function LogisticsTab({
                                                     onClick={() => actions.deleteAllocation(row.id)}
                                                 >
                                                     {busyAction === `DELETE_ALLOCATION_${row.id}`
-                                                        ? 'Deleting...'
-                                                        : 'Delete'}
+                                                        ? t('OrderWorkspace.deleting', 'Deleting...')
+                                                        : t('OrderWorkspace.delete', 'Delete')}
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -167,25 +172,25 @@ export function LogisticsTab({
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Related Containers</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.relatedContainers', 'Related Containers')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Container</TableHead>
-                                <TableHead>Vessel</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>ATD</TableHead>
-                                <TableHead>ETA</TableHead>
-                                <TableHead>Arrival WH</TableHead>
+                                <TableHead>{t('OrderWorkspace.container', 'Container')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.vessel', 'Vessel')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.status', 'Status')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.atd', 'ATD')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.eta', 'ETA')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.arrivalWh', 'Arrival WH')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {relevantContainerOptions.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                                        No linked container
+                                        {t('OrderWorkspace.noLinkedContainer', 'No linked container')}
                                     </TableCell>
                                 </TableRow>
                             ) : (

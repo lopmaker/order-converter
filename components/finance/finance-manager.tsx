@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { money, formatDate } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
+import { useI18n } from '@/components/locale-provider';
 
 interface OrderOption {
   id: string;
@@ -73,6 +74,7 @@ interface LogisticsBillRow {
 }
 
 export function FinanceManager() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<OrderOption[]>([]);
   const [containers, setContainers] = useState<ContainerOption[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState('');
@@ -226,16 +228,24 @@ export function FinanceManager() {
   const createLogisticsAP = async () => {
     if (!selectedContainerId) return;
     const result = await openPrompt({
-      title: 'Create 3PL Bill',
+      title: t('FinanceManager.create3plBillTitle', 'Create 3PL Bill'),
       fields: [
-        { key: 'amount', label: 'Amount (required)', placeholder: 'e.g. 1500.00' },
-        { key: 'dueDate', label: 'Due date (YYYY-MM-DD)', placeholder: 'optional' },
+        {
+          key: 'amount',
+          label: t('FinanceManager.amountRequired', 'Amount (required)'),
+          placeholder: 'e.g. 1500.00',
+        },
+        {
+          key: 'dueDate',
+          label: t('FinanceManager.dueDate', 'Due date (YYYY-MM-DD)'),
+          placeholder: t('LogisticsManager.optional', 'optional'),
+        },
       ],
     });
     if (!result) return;
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      alert('Amount must be greater than 0');
+      alert(t('FinanceManager.amountMustBePositive', 'Amount must be greater than 0'));
       return;
     }
 
@@ -275,11 +285,11 @@ export function FinanceManager() {
   const payLogisticsBill = async (doc: LogisticsBillRow) => {
     const amountDue = Number(doc.amount || 0);
     const result = await openPrompt({
-      title: 'Pay 3PL Bill',
+      title: t('FinanceManager.pay3plBillTitle', 'Pay 3PL Bill'),
       fields: [
         {
           key: 'amount',
-          label: 'Payment amount',
+          label: t('FinanceManager.paymentAmount', 'Payment amount'),
           defaultValue: amountDue > 0 ? String(amountDue) : '',
         },
       ],
@@ -287,7 +297,7 @@ export function FinanceManager() {
     if (!result) return;
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      alert('Amount must be greater than 0');
+      alert(t('FinanceManager.amountMustBePositive', 'Amount must be greater than 0'));
       return;
     }
     await runAction(`PAY_LOGISTICS_${doc.id}`, async () => {
@@ -306,21 +316,25 @@ export function FinanceManager() {
 
   const editLogisticsBill = async (doc: LogisticsBillRow) => {
     const result = await openPrompt({
-      title: 'Edit 3PL Bill',
+      title: t('FinanceManager.edit3plBillTitle', 'Edit 3PL Bill'),
       fields: [
-        { key: 'amount', label: '3PL bill amount', defaultValue: String(Number(doc.amount || 0)) },
+        {
+          key: 'amount',
+          label: t('FinanceManager.billAmount', '3PL bill amount'),
+          defaultValue: String(Number(doc.amount || 0)),
+        },
         {
           key: 'dueDate',
-          label: 'Due date (YYYY-MM-DD)',
+          label: t('FinanceManager.dueDate', 'Due date (YYYY-MM-DD)'),
           defaultValue: doc.dueDate ? new Date(doc.dueDate).toISOString().slice(0, 10) : '',
-          placeholder: 'optional',
+          placeholder: t('LogisticsManager.optional', 'optional'),
         },
       ],
     });
     if (!result) return;
     const amount = Number(result.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      alert('Amount must be greater than 0');
+      alert(t('FinanceManager.amountMustBePositive', 'Amount must be greater than 0'));
       return;
     }
     await runAction(`EDIT_LOGISTICS_${doc.id}`, async () => {
@@ -353,20 +367,22 @@ export function FinanceManager() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Due</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="text-right">Paid</TableHead>
-              <TableHead className="text-right">Outstanding</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Action</TableHead>
+              <TableHead>{t('FinanceManager.code', 'Code')}</TableHead>
+              <TableHead>{t('FinanceManager.due', 'Due')}</TableHead>
+              <TableHead className="text-right">{t('FinanceManager.amount', 'Amount')}</TableHead>
+              <TableHead className="text-right">{t('FinanceManager.paid', 'Paid')}</TableHead>
+              <TableHead className="text-right">
+                {t('FinanceManager.outstanding', 'Outstanding')}
+              </TableHead>
+              <TableHead>{t('FinanceManager.status', 'Status')}</TableHead>
+              <TableHead className="text-right">{t('FinanceManager.action', 'Action')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {docs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
-                  No documents yet
+                  {t('FinanceManager.noDocuments', 'No documents yet')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -387,7 +403,9 @@ export function FinanceManager() {
                         disabled={doc.outstanding <= 0 || busyAction === actionKey}
                         onClick={() => payOutstanding(targetType, doc)}
                       >
-                        {busyAction === actionKey ? 'Posting...' : 'Pay Outstanding'}
+                        {busyAction === actionKey
+                          ? t('FinanceManager.posting', 'Posting...')
+                          : t('FinanceManager.payOutstanding', 'Pay Outstanding')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -405,7 +423,7 @@ export function FinanceManager() {
       <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr]">
         <Select value={selectedOrderId || undefined} onValueChange={setSelectedOrderId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select order (VPO)" />
+            <SelectValue placeholder={t('FinanceManager.selectOrder', 'Select order (VPO)')} />
           </SelectTrigger>
           <SelectContent>
             {orders.map((order) => (
@@ -420,35 +438,48 @@ export function FinanceManager() {
           disabled={!selectedOrderId || busyAction === 'CREATE_TRANSIT_DOCS'}
           onClick={createTransitDocs}
         >
-          {busyAction === 'CREATE_TRANSIT_DOCS' ? 'Creating...' : 'Auto Create AR+Vendor AP'}
+          {busyAction === 'CREATE_TRANSIT_DOCS'
+            ? t('FinanceManager.creating', 'Creating...')
+            : t('FinanceManager.autoCreateArVendorAp', 'Auto Create AR+Vendor AP')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'CREATE_AR'}
           onClick={createAR}
         >
-          {busyAction === 'CREATE_AR' ? 'Creating...' : 'Create AR'}
+          {busyAction === 'CREATE_AR'
+            ? t('FinanceManager.creating', 'Creating...')
+            : t('FinanceManager.createAr', 'Create AR')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'CREATE_VENDOR_AP'}
           onClick={createVendorAP}
         >
-          {busyAction === 'CREATE_VENDOR_AP' ? 'Creating...' : 'Create Vendor AP'}
+          {busyAction === 'CREATE_VENDOR_AP'
+            ? t('FinanceManager.creating', 'Creating...')
+            : t('FinanceManager.createVendorAp', 'Create Vendor AP')}
         </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'CREATE_LOGISTICS_AP'}
           onClick={createLogisticsAP}
         >
-          {busyAction === 'CREATE_LOGISTICS_AP' ? 'Creating...' : 'Create 3PL AP (Manual)'}
+          {busyAction === 'CREATE_LOGISTICS_AP'
+            ? t('FinanceManager.creating', 'Creating...')
+            : t('FinanceManager.create3plAp', 'Create 3PL AP (Manual)')}
         </Button>
       </div>
 
       <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
         <Select value={selectedContainerId || undefined} onValueChange={setSelectedContainerId}>
           <SelectTrigger>
-            <SelectValue placeholder="Select container for 3PL settlement" />
+            <SelectValue
+              placeholder={t(
+                'FinanceManager.selectContainerSettlement',
+                'Select container for 3PL settlement'
+              )}
+            />
           </SelectTrigger>
           <SelectContent>
             {containers.map((container) => (
@@ -459,18 +490,19 @@ export function FinanceManager() {
           </SelectContent>
         </Select>
         <div className="rounded-lg border px-3 py-2 text-xs text-muted-foreground">
-          3PL settlement is independent and container-based.
+          {t('FinanceManager.settlementHint', '3PL settlement is independent and container-based.')}
         </div>
       </div>
 
       {selectedOrder && (
         <div className="rounded-lg border p-3 text-xs text-muted-foreground">
-          Current Order:{' '}
-          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> | Workflow:{' '}
+          {t('FinanceManager.currentOrder', 'Current Order')}:{' '}
+          <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
+          {t('FinanceManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
             {selectedOrder.workflowStatus || 'PO_UPLOADED'}
           </span>{' '}
-          | Sales:{' '}
+          | {t('FinanceManager.sales', 'Sales')}:{' '}
           <span className="font-medium text-foreground">
             ${Number(selectedOrder.totalAmount || 0).toFixed(2)}
           </span>
@@ -480,56 +512,87 @@ export function FinanceManager() {
       {summary && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Order Financial Summary (AR / AP)</CardTitle>
+            <CardTitle className="text-sm">
+              {t('FinanceManager.orderFinancialSummary', 'Order Financial Summary (AR / AP)')}
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
             <div className="space-y-1">
-              <p className="font-medium">Customer AR</p>
-              <p>Total: {money(summary.totals.receivable)}</p>
-              <p>Paid: {money(summary.totals.receivablePaid)}</p>
-              <p>Outstanding: {money(summary.totals.receivableOutstanding)}</p>
+              <p className="font-medium">{t('FinanceManager.customerAr', 'Customer AR')}</p>
+              <p>
+                {t('Workflow.total', 'Total')}: {money(summary.totals.receivable)}
+              </p>
+              <p>
+                {t('FinanceManager.paid', 'Paid')}: {money(summary.totals.receivablePaid)}
+              </p>
+              <p>
+                {t('FinanceManager.outstanding', 'Outstanding')}:{' '}
+                {money(summary.totals.receivableOutstanding)}
+              </p>
             </div>
             <div className="space-y-1">
-              <p className="font-medium">Total AP (Vendor + 3PL)</p>
-              <p>Total: {money(apTotals.total)}</p>
-              <p>Paid: {money(apTotals.paid)}</p>
-              <p>Outstanding: {money(apTotals.outstanding)}</p>
+              <p className="font-medium">
+                {t('FinanceManager.totalAp', 'Total AP (Vendor + 3PL)')}
+              </p>
+              <p>
+                {t('Workflow.total', 'Total')}: {money(apTotals.total)}
+              </p>
+              <p>
+                {t('FinanceManager.paid', 'Paid')}: {money(apTotals.paid)}
+              </p>
+              <p>
+                {t('FinanceManager.outstanding', 'Outstanding')}: {money(apTotals.outstanding)}
+              </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {loading && <div className="text-sm text-muted-foreground">Loading financial data...</div>}
+      {loading && (
+        <div className="text-sm text-muted-foreground">
+          {t('FinanceManager.loadingFinancialData', 'Loading financial data...')}
+        </div>
+      )}
 
       {summary && (
         <div className="space-y-4">
           <DocTable
-            title="Commercial Invoice (AR)"
+            title={t('FinanceManager.commercialInvoiceAr', 'Commercial Invoice (AR)')}
             docs={summary.invoices}
             targetType="CUSTOMER_INVOICE"
           />
-          <DocTable title="Vendor Bill (AP)" docs={summary.vendorBills} targetType="VENDOR_BILL" />
+          <DocTable
+            title={t('FinanceManager.vendorBillAp', 'Vendor Bill (AP)')}
+            docs={summary.vendorBills}
+            targetType="VENDOR_BILL"
+          />
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">3PL Bill (AP) - Container Based</CardTitle>
+              <CardTitle className="text-sm">
+                {t('FinanceManager.thirdPartyBillAp', '3PL Bill (AP) - Container Based')}
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Bill No</TableHead>
-                    <TableHead>Container</TableHead>
-                    <TableHead>Due</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead>{t('FinanceManager.billNo', 'Bill No')}</TableHead>
+                    <TableHead>{t('FinanceManager.container', 'Container')}</TableHead>
+                    <TableHead>{t('FinanceManager.due', 'Due')}</TableHead>
+                    <TableHead className="text-right">
+                      {t('FinanceManager.amount', 'Amount')}
+                    </TableHead>
+                    <TableHead>{t('FinanceManager.status', 'Status')}</TableHead>
+                    <TableHead className="text-right">
+                      {t('FinanceManager.action', 'Action')}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logisticsBills.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
-                        No 3PL bills for selected container
+                        {t('FinanceManager.no3plBills', 'No 3PL bills for selected container')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -552,7 +615,9 @@ export function FinanceManager() {
                               disabled={busyAction === `EDIT_LOGISTICS_${doc.id}`}
                               onClick={() => editLogisticsBill(doc)}
                             >
-                              {busyAction === `EDIT_LOGISTICS_${doc.id}` ? 'Saving...' : 'Edit'}
+                              {busyAction === `EDIT_LOGISTICS_${doc.id}`
+                                ? t('LogisticsManager.saving', 'Saving...')
+                                : t('FinanceManager.edit', 'Edit')}
                             </Button>
                             <Button
                               size="sm"
@@ -560,7 +625,9 @@ export function FinanceManager() {
                               disabled={busyAction === `PAY_LOGISTICS_${doc.id}`}
                               onClick={() => payLogisticsBill(doc)}
                             >
-                              {busyAction === `PAY_LOGISTICS_${doc.id}` ? 'Posting...' : 'Pay'}
+                              {busyAction === `PAY_LOGISTICS_${doc.id}`
+                                ? t('FinanceManager.posting', 'Posting...')
+                                : t('FinanceManager.pay', 'Pay')}
                             </Button>
                           </div>
                         </TableCell>

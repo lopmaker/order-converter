@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +29,8 @@ import { Label } from '@/components/ui/label';
 import { Check, ChevronsUpDown, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { useI18n } from '@/components/locale-provider';
+
 interface Vendor {
     id: string;
     name: string;
@@ -43,6 +47,7 @@ interface VendorSelectorProps {
 }
 
 export function VendorSelector({ currentVendorName, onVendorChange, disabled }: VendorSelectorProps) {
+    const { t } = useI18n();
     const [open, setOpen] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -74,7 +79,7 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
 
     const handleCreateVendor = async () => {
         if (!newVendorName.trim()) {
-            toast.error('Vendor name is required');
+            toast.error(t('OrderWorkspace.vendorNameRequired', 'Vendor name is required'));
             return;
         }
 
@@ -88,7 +93,7 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
 
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.error || 'Failed to create vendor');
+                throw new Error(error.error || t('OrderWorkspace.failedToCreateVendor', 'Failed to create vendor'));
             }
 
             const newVendor = await res.json();
@@ -100,7 +105,7 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
             // Select the new vendor immediately
             await handleSelectVendor(newVendor);
 
-            toast.success('Vendor added to portfolio');
+            toast.success(t('OrderWorkspace.vendorAddedToPortfolio', 'Vendor added to portfolio'));
         } catch (error: any) {
             toast.error(error.message);
         } finally {
@@ -132,19 +137,19 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
                         disabled={disabled}
                         className="h-auto p-0 px-2 font-medium hover:bg-muted/50 w-auto justify-between group"
                     >
-                        <span className="truncate max-w-[200px]">{currentVendorName || 'Select Vendor'}</span>
+                        <span className="truncate max-w-[200px]">{currentVendorName || t('OrderWorkspace.selectVendor', 'Select Vendor')}</span>
                         <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0" align="start">
                     <Command>
-                        <CommandInput placeholder="Search vendors..." />
+                        <CommandInput placeholder={t('OrderWorkspace.searchVendors', 'Search vendors...')} />
                         <CommandList>
-                            <CommandEmpty>No vendor found.</CommandEmpty>
-                            <CommandGroup heading="Vendors">
+                            <CommandEmpty>{t('OrderWorkspace.noVendorFound', 'No vendor found.')}</CommandEmpty>
+                            <CommandGroup heading={t('OrderWorkspace.vendors', 'Vendors')}>
                                 {loading ? (
                                     <CommandItem disabled className="justify-center">
-                                        <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading...
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" /> {t('OrderWorkspace.loading', 'Loading...')}
                                     </CommandItem>
                                 ) : (
                                     vendors.map((vendor) => (
@@ -174,7 +179,7 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
                                     className="font-medium text-primary flex items-center gap-2 cursor-pointer"
                                 >
                                     <Plus className="h-4 w-4" />
-                                    Add New Vendor
+                                    {t('OrderWorkspace.addNewVendor', 'Add New Vendor')}
                                 </CommandItem>
                             </CommandGroup>
                         </CommandList>
@@ -185,44 +190,44 @@ export function VendorSelector({ currentVendorName, onVendorChange, disabled }: 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Add New Vendor</DialogTitle>
+                        <DialogTitle>{t('OrderWorkspace.addNewVendor', 'Add New Vendor')}</DialogTitle>
                         <DialogDescription>
-                            Add a new vendor to your portfolio. This vendor can be used across all orders.
+                            {t('OrderWorkspace.addNewVendorDesc', 'Add a new vendor to your portfolio. This vendor can be used across all orders.')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="name" className="text-right">
-                                Name <span className="text-destructive">*</span>
+                                {t('OrderWorkspace.name', 'Name')} <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="name"
                                 value={newVendorName}
                                 onChange={(e) => setNewVendorName(e.target.value)}
                                 className="col-span-3"
-                                placeholder="Vendor Company Name"
+                                placeholder={t('OrderWorkspace.vendorCompanyName', 'Vendor Company Name')}
                             />
                         </div>
                         <div className="grid grid-cols-4 items-start gap-4">
                             <Label htmlFor="address" className="text-right pt-2">
-                                Address
+                                {t('OrderWorkspace.address', 'Address')}
                             </Label>
                             <Input
                                 id="address"
                                 value={newVendorAddress}
                                 onChange={(e) => setNewVendorAddress(e.target.value)}
                                 className="col-span-3"
-                                placeholder="Optional vendor address"
+                                placeholder={t('OrderWorkspace.optionalVendorAddress', 'Optional vendor address')}
                             />
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-                            Cancel
+                            {t('OrderWorkspace.cancel', 'Cancel')}
                         </Button>
                         <Button onClick={handleCreateVendor} disabled={saving || !newVendorName.trim()}>
                             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Save Vendor
+                            {t('OrderWorkspace.saveVendor', 'Save Vendor')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

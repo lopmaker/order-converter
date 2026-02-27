@@ -33,9 +33,10 @@ export function parseDecimalInput(value: unknown, fallback = 0): number {
 
 /**
  * Cost formula:
- *   dutyCost         = vendorCost × tariffRate × 0.4   (estimated duty paid)
- *   shippingCost     = $0.10 × qty                    (3PL freight estimate)
- *   estimated3plCost = dutyCost + shippingCost          (total 3PL bill)
+ *   dutyCost         = vendorCost × tariffRate          (estimated customs duty)
+ *   handlingCost     = dutyCost × 0.4                   (3PL handling estimate)
+ *   shippingCost     = $0.10 × qty                      (3PL freight estimate)
+ *   estimated3plCost = handlingCost + shippingCost      (total 3PL bill)
  *   margin           = revenue − vendorCost − estimated3plCost
  */
 export function calculateEstimatedMargin(input: MarginInputs): MarginOutputs {
@@ -46,10 +47,11 @@ export function calculateEstimatedMargin(input: MarginInputs): MarginOutputs {
 
   const customerRevenue = customerUnit * qty;
   const vendorCost = vendorUnit * qty;
-  const dutyCost = vendorCost * tariffRate * 0.4; // estimated duty paid
-  const shippingCost = 0.1 * qty;                 // 3PL freight: $0.10/pc
-  const estimated3plCost = dutyCost + shippingCost; // total 3PL = duty + shipping
-  const estimatedMargin = customerRevenue - vendorCost - estimated3plCost; // no double-count
+  const dutyCost = vendorCost * tariffRate; // estimated customs duty (for visibility)
+  const handlingCost = dutyCost * 0.4; // 3PL handling = duty x 0.4
+  const shippingCost = 0.1 * qty; // 3PL freight: $0.10/pc
+  const estimated3plCost = handlingCost + shippingCost; // total 3PL handling + shipping
+  const estimatedMargin = customerRevenue - vendorCost - estimated3plCost;
   const estimatedMarginRate = customerRevenue > 0 ? estimatedMargin / customerRevenue : 0;
 
   return {

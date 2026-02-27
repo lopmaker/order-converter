@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -12,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { money, num, formatDate } from '@/lib/format';
 import { FinanceSummary, PaymentRow, DocSummary } from '../types';
 import { statusBadgeVariant } from '../utils';
+import { useI18n } from '@/components/locale-provider';
 
 export function FinanceTab({
     financeSummary,
@@ -39,6 +42,8 @@ export function FinanceTab({
         deletePayment: (id: string) => void;
     };
 }) {
+    const { t } = useI18n();
+
     const DocTable = ({
         title,
         docs,
@@ -56,20 +61,20 @@ export function FinanceTab({
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Code</TableHead>
-                            <TableHead>Due</TableHead>
-                            <TableHead className="text-right">Amount</TableHead>
-                            <TableHead className="text-right">Paid</TableHead>
-                            <TableHead className="text-right">Outstanding</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Action</TableHead>
+                            <TableHead>{t('OrderWorkspace.code', 'Code')}</TableHead>
+                            <TableHead>{t('OrderWorkspace.date', 'Due')}</TableHead>
+                            <TableHead className="text-right">{t('OrderWorkspace.amount', 'Amount')}</TableHead>
+                            <TableHead className="text-right">{t('OrderWorkspace.paid', 'Paid')}</TableHead>
+                            <TableHead className="text-right">{t('OrderWorkspace.outstanding', 'Outstanding')}</TableHead>
+                            <TableHead>{t('OrderWorkspace.status', 'Status')}</TableHead>
+                            <TableHead className="text-right">{t('OrderWorkspace.action', 'Action')}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {docs.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
-                                    No documents
+                                    {t('OrderWorkspace.noDocuments', 'No documents')}
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -97,7 +102,7 @@ export function FinanceTab({
                                                     disabled={busyAction === editKey}
                                                     onClick={() => actions.editFinanceDoc(targetType, doc)}
                                                 >
-                                                    {busyAction === editKey ? 'Saving...' : 'Edit'}
+                                                    {busyAction === editKey ? t('OrderWorkspace.saving', 'Saving...') : t('OrderWorkspace.edit', 'Edit')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -105,7 +110,7 @@ export function FinanceTab({
                                                     disabled={doc.outstanding <= 0 || busyAction === actionKey}
                                                     onClick={() => actions.payOutstanding(targetType, doc)}
                                                 >
-                                                    {busyAction === actionKey ? 'Posting...' : 'Pay'}
+                                                    {busyAction === actionKey ? t('OrderWorkspace.posting', 'Posting...') : t('OrderWorkspace.pay', 'Pay')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -113,7 +118,7 @@ export function FinanceTab({
                                                     disabled={busyAction === deleteKey}
                                                     onClick={() => actions.deleteFinanceDoc(targetType, doc.id)}
                                                 >
-                                                    {busyAction === deleteKey ? 'Deleting...' : 'Delete'}
+                                                    {busyAction === deleteKey ? t('OrderWorkspace.deleting', 'Deleting...') : t('OrderWorkspace.delete', 'Delete')}
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -131,67 +136,67 @@ export function FinanceTab({
         <div className="space-y-4">
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Finance Snapshot</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.financeSnapshot', 'Finance Snapshot')}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
                     <div className="rounded-lg border p-3 space-y-1">
-                        <p className="font-medium">Customer AR</p>
-                        <p>Total: {money(financeSummary?.totals.receivable || 0)}</p>
-                        <p>Paid: {money(financeSummary?.totals.receivablePaid || 0)}</p>
-                        <p>Outstanding: {money(financeSummary?.totals.receivableOutstanding || 0)}</p>
+                        <p className="font-medium">{t('OrderWorkspace.customerAr', 'Customer AR')}</p>
+                        <p>{t('OrderWorkspace.total', 'Total:')} {money(financeSummary?.totals.receivable || 0)}</p>
+                        <p>{t('OrderWorkspace.paid', 'Paid:')} {money(financeSummary?.totals.receivablePaid || 0)}</p>
+                        <p>{t('OrderWorkspace.outstanding', 'Outstanding:')} {money(financeSummary?.totals.receivableOutstanding || 0)}</p>
                     </div>
                     <div className="rounded-lg border p-3 space-y-1">
-                        <p className="font-medium">Vendor AP</p>
-                        <p>Total: {money(financeSummary?.totals.vendorPayable || 0)}</p>
-                        <p>Paid: {money(financeSummary?.totals.vendorPaid || 0)}</p>
-                        <p>Outstanding: {money(financeSummary?.totals.vendorOutstanding || 0)}</p>
+                        <p className="font-medium">{t('OrderWorkspace.vendorAp', 'Vendor AP')}</p>
+                        <p>{t('OrderWorkspace.total', 'Total:')} {money(financeSummary?.totals.vendorPayable || 0)}</p>
+                        <p>{t('OrderWorkspace.paid', 'Paid:')} {money(financeSummary?.totals.vendorPaid || 0)}</p>
+                        <p>{t('OrderWorkspace.outstanding', 'Outstanding:')} {money(financeSummary?.totals.vendorOutstanding || 0)}</p>
                     </div>
                     <div className="rounded-lg border p-3 space-y-1">
-                        <p className="font-medium">3PL AP</p>
-                        <p>Total: {money(financeSummary?.totals.logisticsPayable || 0)}</p>
-                        <p>Paid: {money(financeSummary?.totals.logisticsPaid || 0)}</p>
-                        <p>Outstanding: {money(financeSummary?.totals.logisticsOutstanding || 0)}</p>
+                        <p className="font-medium">{t('OrderWorkspace.threePlAp', '3PL AP')}</p>
+                        <p>{t('OrderWorkspace.total', 'Total:')} {money(financeSummary?.totals.logisticsPayable || 0)}</p>
+                        <p>{t('OrderWorkspace.paid', 'Paid:')} {money(financeSummary?.totals.logisticsPaid || 0)}</p>
+                        <p>{t('OrderWorkspace.outstanding', 'Outstanding:')} {money(financeSummary?.totals.logisticsOutstanding || 0)}</p>
                     </div>
                 </CardContent>
             </Card>
 
             <DocTable
-                title="Commercial Invoice (AR)"
+                title={t('OrderWorkspace.commercialInvoiceAr', 'Commercial Invoice (AR)')}
                 docs={financeSummary?.invoices || []}
                 targetType="CUSTOMER_INVOICE"
             />
             <DocTable
-                title="Vendor Bill (AP)"
+                title={t('OrderWorkspace.vendorBillAp', 'Vendor Bill (AP)')}
                 docs={financeSummary?.vendorBills || []}
                 targetType="VENDOR_BILL"
             />
             <DocTable
-                title="3PL Bill (AP)"
+                title={t('OrderWorkspace.threePlBillAp', '3PL Bill (AP)')}
                 docs={financeSummary?.logisticsBills || []}
                 targetType="LOGISTICS_BILL"
             />
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Payments</CardTitle>
+                    <CardTitle className="text-sm">{t('OrderWorkspace.payments', 'Payments')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Direction</TableHead>
-                                <TableHead>Target</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                                <TableHead>Method</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead>{t('OrderWorkspace.date', 'Date')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.direction', 'Direction')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.target', 'Target')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.amount', 'Amount')}</TableHead>
+                                <TableHead>{t('OrderWorkspace.method', 'Method')}</TableHead>
+                                <TableHead className="text-right">{t('OrderWorkspace.action', 'Action')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {payments.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
-                                        No payment posted
+                                        {t('OrderWorkspace.noPaymentPosted', 'No payment posted')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -214,7 +219,7 @@ export function FinanceTab({
                                                     disabled={busyAction === `EDIT_PAYMENT_${row.id}`}
                                                     onClick={() => actions.editPayment(row)}
                                                 >
-                                                    {busyAction === `EDIT_PAYMENT_${row.id}` ? 'Saving...' : 'Edit'}
+                                                    {busyAction === `EDIT_PAYMENT_${row.id}` ? t('OrderWorkspace.saving', 'Saving...') : t('OrderWorkspace.edit', 'Edit')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -222,7 +227,7 @@ export function FinanceTab({
                                                     disabled={busyAction === `DELETE_PAYMENT_${row.id}`}
                                                     onClick={() => actions.deletePayment(row.id)}
                                                 >
-                                                    {busyAction === `DELETE_PAYMENT_${row.id}` ? 'Deleting...' : 'Delete'}
+                                                    {busyAction === `DELETE_PAYMENT_${row.id}` ? t('OrderWorkspace.deleting', 'Deleting...') : t('OrderWorkspace.delete', 'Delete')}
                                                 </Button>
                                             </div>
                                         </TableCell>

@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { useI18n } from '@/components/locale-provider';
 import { Button } from '@/components/ui/button';
 
 interface PdfUploaderProps {
@@ -13,6 +14,8 @@ interface PdfUploaderProps {
 }
 
 export function PdfUploader({ onFilesSelect }: PdfUploaderProps) {
+  const { t } = useI18n();
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -43,12 +46,19 @@ export function PdfUploader({ onFilesSelect }: PdfUploaderProps) {
           <Upload className="h-8 w-8 text-primary" />
         </div>
         <h3 className="text-xl font-semibold tracking-tight mb-2">
-          {isDragActive ? 'Drop PDFs here' : 'Upload Order PDFs'}
+          {isDragActive
+            ? t('HomePage.dropPdfsHere', 'Drop PDFs here')
+            : t('HomePage.uploadTitle', 'Upload Order PDFs')}
         </h3>
         <p className="text-sm text-muted-foreground max-w-xs mb-6">
-          Drag and drop multiple PO files here, or click to browse.
+          {t(
+            'HomePage.uploadSubtitle',
+            'Drag and drop multiple PO files here, or click to browse.'
+          )}
         </p>
-        <Button variant={isDragActive ? 'default' : 'outline'}>Select Files</Button>
+        <Button variant={isDragActive ? 'default' : 'outline'}>
+          {t('HomePage.selectFiles', 'Select Files')}
+        </Button>
       </Card>
     </div>
   );

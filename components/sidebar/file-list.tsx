@@ -4,6 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 import { OrderFile } from '@/lib/types';
+import { useI18n } from '@/components/locale-provider';
 
 interface FileListProps {
   orders: OrderFile[];
@@ -20,13 +21,15 @@ export function FileList({
   onRemoveOrder,
   onAddMore,
 }: FileListProps) {
+  const { t } = useI18n();
+
   if (orders.length === 0) return null;
 
   return (
     <div className="flex flex-col h-full border-r bg-card/50 w-[220px] shrink-0">
       <div className="px-4 py-3 border-b flex justify-between items-center bg-background/95 backdrop-blur">
         <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
-          Files ({orders.length})
+          {t('FileList.files', 'Files')} ({orders.length})
         </h3>
         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAddMore}>
           <Plus className="h-3.5 w-3.5" />
@@ -53,16 +56,20 @@ export function FileList({
                 {order.status === 'completed' && (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 )}
-                {order.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                {order.status === 'error' && (
+                  <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                )}
                 {order.status === 'idle' && <FileText className="h-3.5 w-3.5 opacity-40" />}
               </div>
 
               {/* Filename */}
               <div className="flex-1 min-w-0">
-                <p className="truncate">{order.fileName || order.file?.name || 'Unknown'}</p>
+                <p className="truncate">
+                  {order.fileName || order.file?.name || t('FileList.unknown', 'Unknown')}
+                </p>
                 {order.status === 'processing' && (
                   <p className="text-[9px] opacity-60 truncate mt-0.5">
-                    {order.processingStep || 'Processing...'}
+                    {order.processingStep || t('FileList.processing', 'Processing...')}
                   </p>
                 )}
               </div>
@@ -83,4 +90,3 @@ export function FileList({
     </div>
   );
 }
-

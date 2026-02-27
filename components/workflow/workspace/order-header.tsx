@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +21,7 @@ import {
 } from './types';
 import { statusBadgeVariant } from './utils';
 import { VendorSelector } from './vendor-selector';
+import { useI18n } from '@/components/locale-provider';
 
 export function OrderHeader({
     order,
@@ -40,16 +43,18 @@ export function OrderHeader({
         onVendorChange: (vendorName: string, vendorAddress?: string | null) => Promise<void>;
     };
 }) {
+    const { t } = useI18n();
+
     return (
         <div className="flex flex-col gap-4">
             <Link href="/dashboard" className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors w-fit">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Dashboard
+                {t('OrderWorkspace.backToDashboard', 'Back to Dashboard')}
             </Link>
             <div className="flex flex-wrap items-center justify-between gap-6">
                 <div className="space-y-1.5 border-l-4 border-primary pl-4">
                     <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Order {order.vpoNumber}</h1>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('OrderWorkspace.order', 'Order')} {order.vpoNumber}</h1>
                         <Badge variant={statusBadgeVariant(order.workflowStatus)} className="rounded-md px-2 py-0.5 shadow-sm text-xs font-medium">
                             {order.workflowStatus || 'OPEN'}
                         </Badge>
@@ -73,20 +78,20 @@ export function OrderHeader({
                             onClick={() => actions.setIsPoPreviewOpen(true)}
                         >
                             <FileText className="mr-2 h-4 w-4" />
-                            View Vendor PO
+                            {t('OrderWorkspace.viewVendorPo', 'View Vendor PO')}
                         </Button>
-                        <span className="text-xs text-muted-foreground">Rollback:</span>
+                        <span className="text-xs text-muted-foreground">{t('OrderWorkspace.rollback', 'Rollback:')}</span>
                         <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
                                 actions.rollbackWorkflow(
                                     'UNDO_MARK_DELIVERED',
-                                    'Undo DELIVERED status?'
+                                    t('OrderWorkspace.undoDeliverConfirm', 'Undo DELIVERED status?')
                                 )
                             }
                         >
-                            Undo Deliver
+                            {t('OrderWorkspace.undoDeliver', 'Undo Deliver')}
                         </Button>
                         <Button
                             size="sm"
@@ -94,11 +99,11 @@ export function OrderHeader({
                             onClick={() =>
                                 actions.rollbackWorkflow(
                                     'UNDO_START_TRANSIT',
-                                    'Undo Ship Order? This reverts the status to OPEN and removes ETAs.'
+                                    t('OrderWorkspace.undoShipOrderConfirm', 'Undo Ship Order? This reverts the status to OPEN and removes ETAs.')
                                 )
                             }
                         >
-                            Undo Ship Order
+                            {t('OrderWorkspace.undoShipOrder', 'Undo Ship Order')}
                         </Button>
                         <Button
                             size="sm"
@@ -107,18 +112,18 @@ export function OrderHeader({
                             onClick={() =>
                                 actions.rollbackWorkflow(
                                     'UNDO_SHIPPING_DOC',
-                                    'Undo Auto-Docs? This deletes the Auto-Generated Shipping & AP/AR Documents.'
+                                    t('OrderWorkspace.undoAutoDocsConfirm', 'Undo Auto-Docs? This deletes the Auto-Generated Shipping & AP/AR Documents.')
                                 )
                             }
                         >
-                            Undo Auto-Docs
+                            {t('OrderWorkspace.undoAutoDocs', 'Undo Auto-Docs')}
                         </Button>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 bg-card p-1.5 rounded-xl border shadow-sm">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-medium text-muted-foreground">
-                                Container Context:
+                                {t('OrderWorkspace.containerContext', 'Container Context:')}
                             </span>
                             <Select
                                 value={selectedContainerForWorkflow}
@@ -126,10 +131,10 @@ export function OrderHeader({
                                 disabled={!!busyAction || relevantContainerOptions.length === 0}
                             >
                                 <SelectTrigger className="h-8 w-[140px] text-xs">
-                                    <SelectValue placeholder="Container" />
+                                    <SelectValue placeholder={t('OrderWorkspace.container', 'Container')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={AUTO_CONTAINER}>Any / Unassigned</SelectItem>
+                                    <SelectItem value={AUTO_CONTAINER}>{t('OrderWorkspace.anyUnassigned', 'Any / Unassigned')}</SelectItem>
                                     {relevantContainerOptions.map((c) => (
                                         <SelectItem key={c.id} value={c.id}>
                                             {c.containerNo}
@@ -144,14 +149,14 @@ export function OrderHeader({
                             onClick={() => actions.triggerWorkflow('START_TRANSIT')}
                             disabled={busyAction === 'TRIGGER_START_TRANSIT'}
                         >
-                            {busyAction === 'TRIGGER_START_TRANSIT' ? 'Wait...' : '1. Ship Order'}
+                            {busyAction === 'TRIGGER_START_TRANSIT' ? t('OrderWorkspace.wait', 'Wait...') : t('OrderWorkspace.shipOrder', '1. Ship Order')}
                         </Button>
                         <Button
                             size="sm"
                             onClick={() => actions.triggerWorkflow('MARK_DELIVERED')}
                             disabled={busyAction === 'TRIGGER_MARK_DELIVERED'}
                         >
-                            {busyAction === 'TRIGGER_MARK_DELIVERED' ? 'Wait...' : '2. Mark Delivered'}
+                            {busyAction === 'TRIGGER_MARK_DELIVERED' ? t('OrderWorkspace.wait', 'Wait...') : t('OrderWorkspace.markDelivered', '2. Mark Delivered')}
                         </Button>
                     </div>
                 </div>

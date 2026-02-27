@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Trash2, Loader2, Pencil, Save, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { useI18n } from '@/components/locale-provider';
 
 import { type SerializedOrder, type OrderItem, type OrderWithItems } from '@/lib/types';
 
@@ -28,6 +29,7 @@ type WorkflowAction = 'GENERATE_SHIPPING_DOC' | 'START_TRANSIT' | 'MARK_DELIVERE
 
 export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersTableProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [orders, setOrders] = useState<SerializedOrder[]>(initialOrders);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -47,12 +49,11 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       setPage(nextPage);
     } catch (error) {
       console.error('Failed to load more orders:', error);
-      alert('Failed to load more orders.');
+      alert(t('OrdersTable.loadMoreFailed', 'Failed to load more orders.'));
     } finally {
       setLoadingMore(false);
     }
   };
-
 
   // Expanded row state
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -113,7 +114,9 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(payload.error || 'Failed to trigger workflow');
+        throw new Error(
+          payload.error || t('OrdersTable.workflowTriggerFailed', 'Failed to trigger workflow')
+        );
       }
 
       const nextStatus = payload?.data?.updated?.workflowStatus;
@@ -128,7 +131,11 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       router.refresh();
     } catch (err) {
       console.error('Workflow trigger error:', err);
-      alert(err instanceof Error ? err.message : 'Failed to trigger workflow');
+      alert(
+        err instanceof Error
+          ? err.message
+          : t('OrdersTable.workflowTriggerFailed', 'Failed to trigger workflow')
+      );
     } finally {
       setWorkflowLoading(null);
     }
@@ -183,7 +190,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       router.refresh();
     } catch (err) {
       console.error('Save error:', err);
-      alert('Failed to save changes');
+      alert(t('OrdersTable.saveFailed', 'Failed to save changes'));
     } finally {
       setSaving(false);
     }
@@ -209,7 +216,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       router.refresh();
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete order');
+      alert(t('OrdersTable.deleteFailed', 'Failed to delete order'));
     } finally {
       setLoadingId(null);
       setConfirmOpen(false);
@@ -236,7 +243,10 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
   if (orders.length === 0) {
     return (
       <div className="text-center py-10 text-muted-foreground">
-        No orders found. Connect the database and save an order to see it here.
+        {t(
+          'OrdersTable.noOrders',
+          'No orders found. Connect the database and save an order to see it here.'
+        )}
       </div>
     );
   }
@@ -248,17 +258,17 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
           <TableHeader>
             <TableRow>
               <TableHead className="w-[40px]"></TableHead>
-              <TableHead>VPO Number</TableHead>
-              <TableHead>SO Ref</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Exp Ship</TableHead>
-              <TableHead>Ship To</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Workflow</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
+              <TableHead>{t('OrdersTable.vpoNumber', 'VPO Number')}</TableHead>
+              <TableHead>{t('OrdersTable.soRef', 'SO Ref')}</TableHead>
+              <TableHead>{t('OrdersTable.customer', 'Customer')}</TableHead>
+              <TableHead>{t('OrdersTable.supplier', 'Supplier')}</TableHead>
+              <TableHead>{t('OrdersTable.orderDate', 'Order Date')}</TableHead>
+              <TableHead>{t('OrdersTable.expShip', 'Exp Ship')}</TableHead>
+              <TableHead>{t('OrdersTable.shipTo', 'Ship To')}</TableHead>
+              <TableHead>{t('OrdersTable.payment', 'Payment')}</TableHead>
+              <TableHead>{t('OrdersTable.workflow', 'Workflow')}</TableHead>
+              <TableHead className="text-right">{t('OrdersTable.amount', 'Amount')}</TableHead>
+              <TableHead className="w-[150px]">{t('OrdersTable.actions', 'Actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -311,7 +321,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                         className="h-7 px-2 text-xs"
                         onClick={() => router.push(`/dashboard/orders/${order.id}`)}
                       >
-                        Open
+                        {t('OrdersTable.open', 'Open')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -319,7 +329,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                         className="h-7 w-7"
                         onClick={() => handleDeleteClick(order.id)}
                         disabled={loadingId === order.id}
-                        title="Delete"
+                        title={t('OrdersTable.delete', 'Delete')}
                       >
                         {loadingId === order.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -354,7 +364,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                   {workflowLoading === 'GENERATE_SHIPPING_DOC' ? (
                                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                                   ) : null}
-                                  Send Shipping Doc
+                                  {t('OrdersTable.sendShippingDoc', 'Send Shipping Doc')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -365,7 +375,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                   {workflowLoading === 'START_TRANSIT' ? (
                                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                                   ) : null}
-                                  Start Transit
+                                  {t('OrdersTable.startTransit', 'Start Transit')}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -376,7 +386,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                   {workflowLoading === 'MARK_DELIVERED' ? (
                                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                                   ) : null}
-                                  Mark Delivered
+                                  {t('OrdersTable.markDelivered', 'Mark Delivered')}
                                 </Button>
                               </div>
 
@@ -389,7 +399,8 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                       onClick={cancelEdit}
                                       disabled={saving}
                                     >
-                                      <X className="h-4 w-4 mr-1" /> Cancel
+                                      <X className="h-4 w-4 mr-1" />{' '}
+                                      {t('OrdersTable.cancel', 'Cancel')}
                                     </Button>
                                     <Button size="sm" onClick={saveEdit} disabled={saving}>
                                       {saving ? (
@@ -397,12 +408,13 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                       ) : (
                                         <Save className="h-4 w-4 mr-1" />
                                       )}
-                                      Save Changes
+                                      {t('OrdersTable.save', 'Save')}
                                     </Button>
                                   </>
                                 ) : (
                                   <Button size="sm" variant="outline" onClick={startEdit}>
-                                    <Pencil className="h-4 w-4 mr-1" /> Edit Order
+                                    <Pencil className="h-4 w-4 mr-1" />{' '}
+                                    {t('OrdersTable.edit', 'Edit')}
                                   </Button>
                                 )}
                               </div>
@@ -413,32 +425,62 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                               {/* Dates */}
                               <div className="p-4 border rounded-lg bg-background space-y-3">
                                 <h4 className="text-sm font-semibold text-muted-foreground">
-                                  📅 Dates
+                                  📅 {t('OrdersTable.dates', 'Dates')}
                                 </h4>
-                                <FieldRow label="Order Date" field="orderDate" />
-                                <FieldRow label="Exp Ship" field="expShipDate" />
-                                <FieldRow label="R Whs" field="cancelDate" />
+                                <FieldRow
+                                  label={t('OrdersTable.orderDate', 'Order Date')}
+                                  field="orderDate"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.expShip', 'Exp Ship')}
+                                  field="expShipDate"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.rWhs', 'R Whs')}
+                                  field="cancelDate"
+                                />
                               </div>
 
                               {/* Shipping */}
                               <div className="p-4 border rounded-lg bg-background space-y-3">
                                 <h4 className="text-sm font-semibold text-muted-foreground">
-                                  🚚 Shipping
+                                  🚚 {t('OrdersTable.shipping', 'Shipping')}
                                 </h4>
-                                <FieldRow label="Ship Via" field="shipVia" />
-                                <FieldRow label="Ship Terms" field="shipmentTerms" />
-                                <FieldRow label="Ship To" field="shipTo" />
+                                <FieldRow
+                                  label={t('OrdersTable.shipVia', 'Ship Via')}
+                                  field="shipVia"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.shipTerms', 'Ship Terms')}
+                                  field="shipmentTerms"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.shipTo', 'Ship To')}
+                                  field="shipTo"
+                                />
                               </div>
 
                               {/* Payment */}
                               <div className="p-4 border rounded-lg bg-background space-y-3">
                                 <h4 className="text-sm font-semibold text-muted-foreground">
-                                  💰 Payment
+                                  💰 {t('OrdersTable.payment', 'Payment')}
                                 </h4>
-                                <FieldRow label="Terms" field="paymentTerms" />
-                                <FieldRow label="Workflow" field="workflowStatus" />
-                                <FieldRow label="Total" field="totalAmount" />
-                                <FieldRow label="SO Ref" field="soReference" />
+                                <FieldRow
+                                  label={t('OrdersTable.terms', 'Terms')}
+                                  field="paymentTerms"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.workflow', 'Workflow')}
+                                  field="workflowStatus"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.amount', 'Amount')}
+                                  field="totalAmount"
+                                />
+                                <FieldRow
+                                  label={t('OrdersTable.soRef', 'SO Ref')}
+                                  field="soReference"
+                                />
                               </div>
                             </div>
 
@@ -446,20 +488,20 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="p-4 border rounded-lg bg-background space-y-2 min-w-0">
                                 <h4 className="text-sm font-semibold text-muted-foreground">
-                                  👤 Customer (Bill To)
+                                  👤 {t('OrdersTable.customerBillTo', 'Customer (Bill To)')}
                                 </h4>
                                 {editMode ? (
                                   <>
                                     <Input
                                       value={editData.customerName || ''}
                                       onChange={(e) => editField('customerName', e.target.value)}
-                                      placeholder="Customer Name"
+                                      placeholder={t('OrdersTable.customer', 'Customer')}
                                       className="mb-1 w-full"
                                     />
                                     <Textarea
                                       value={editData.customerAddress || ''}
                                       onChange={(e) => editField('customerAddress', e.target.value)}
-                                      placeholder="Address"
+                                      placeholder={t('OrdersTable.address', 'Address')}
                                       className="w-full resize-none"
                                       rows={3}
                                     />
@@ -477,20 +519,20 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                               </div>
                               <div className="p-4 border rounded-lg bg-background space-y-2 min-w-0">
                                 <h4 className="text-sm font-semibold text-muted-foreground">
-                                  🏭 Supplier
+                                  🏭 {t('OrdersTable.supplier', 'Supplier')}
                                 </h4>
                                 {editMode ? (
                                   <>
                                     <Input
                                       value={editData.supplierName || ''}
                                       onChange={(e) => editField('supplierName', e.target.value)}
-                                      placeholder="Supplier Name"
+                                      placeholder={t('OrdersTable.supplier', 'Supplier')}
                                       className="mb-1 w-full"
                                     />
                                     <Textarea
                                       value={editData.supplierAddress || ''}
                                       onChange={(e) => editField('supplierAddress', e.target.value)}
-                                      placeholder="Address"
+                                      placeholder={t('OrdersTable.address', 'Address')}
                                       className="w-full resize-none"
                                       rows={3}
                                     />
@@ -511,22 +553,41 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                             {/* Items Table */}
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold text-muted-foreground">
-                                📦 Order Items
+                                📦{' '}
+                                {t('OrdersTable.itemCount', 'Items ({count})', {
+                                  count: editMode
+                                    ? editItems.length
+                                    : (expandedData?.items?.length ?? 0),
+                                })}
                               </h4>
                               <div className="border rounded-md overflow-x-auto">
                                 <Table>
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead>Code</TableHead>
-                                      <TableHead>Description</TableHead>
-                                      <TableHead>Collection</TableHead>
-                                      <TableHead>Color</TableHead>
-                                      <TableHead>Material</TableHead>
-                                      <TableHead className="text-right">Qty</TableHead>
-                                      <TableHead className="text-right">Cust $</TableHead>
-                                      <TableHead className="text-right">Vendor $</TableHead>
-                                      <TableHead className="text-right">Total</TableHead>
-                                      <TableHead className="text-right">Est Margin</TableHead>
+                                      <TableHead>{t('FinanceManager.code', 'Code')}</TableHead>
+                                      <TableHead>
+                                        {t('OrdersTable.description', 'Description')}
+                                      </TableHead>
+                                      <TableHead>
+                                        {t('OrdersTable.collection', 'Collection')}
+                                      </TableHead>
+                                      <TableHead>{t('OrdersTable.color', 'Color')}</TableHead>
+                                      <TableHead>{t('OrdersTable.material', 'Material')}</TableHead>
+                                      <TableHead className="text-right">
+                                        {t('OrdersTable.qty', 'Qty')}
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        {t('OrdersTable.custPrice', 'Cust $')}
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        {t('OrdersTable.vendorPrice', 'Vendor $')}
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        {t('Workflow.total', 'Total')}
+                                      </TableHead>
+                                      <TableHead className="text-right">
+                                        {t('OrdersTable.estMargin', 'Est Margin')}
+                                      </TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -562,7 +623,8 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                                 <div>{item.description}</div>
                                                 {item.productClass && (
                                                   <div className="text-xs text-muted-foreground">
-                                                    Tariff Key: {item.productClass}
+                                                    {t('TariffManager.tariffKey', 'Tariff Key')}:{' '}
+                                                    {item.productClass}
                                                   </div>
                                                 )}
                                               </>
@@ -726,7 +788,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                         return (
                                           <TableRow className="bg-muted/20 font-semibold">
                                             <TableCell colSpan={5} className="text-right">
-                                              Totals
+                                              {t('Workflow.total', 'Total')}
                                             </TableCell>
                                             <TableCell className="text-right">
                                               {(items as OrderItem[]).reduce(
@@ -739,13 +801,17 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                             <TableCell className="text-right text-green-600">
                                               $
                                               {(items as OrderItem[])
-                                                .reduce((s: number, i) => s + Number(i.total || 0), 0)
+                                                .reduce(
+                                                  (s: number, i) => s + Number(i.total || 0),
+                                                  0
+                                                )
                                                 .toFixed(2)}
                                             </TableCell>
                                             <TableCell className="text-right">
                                               {(items as OrderItem[])
                                                 .reduce(
-                                                  (s: number, i) => s + Number(i.estimatedMargin || 0),
+                                                  (s: number, i) =>
+                                                    s + Number(i.estimatedMargin || 0),
                                                   0
                                                 )
                                                 .toFixed(2)}
@@ -760,7 +826,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                                               colSpan={10}
                                               className="text-center py-6 text-muted-foreground"
                                             >
-                                              No items found
+                                              {t('OrdersTable.noItemsFound', 'No items found')}
                                             </TableCell>
                                           </TableRow>
                                         );
@@ -774,7 +840,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                           </>
                         ) : (
                           <div className="text-center py-4 text-muted-foreground">
-                            Failed to load details
+                            {t('OrdersTable.failedToLoadDetails', 'Failed to load details')}
                           </div>
                         )}
                       </div>
@@ -790,15 +856,21 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
       {hasMore && (
         <div className="flex justify-center py-4">
           <Button onClick={loadMoreOrders} disabled={loadingMore}>
-            {loadingMore ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Load More
+            {loadingMore ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{' '}
+            {loadingMore
+              ? t('OrdersTable.loadingMore', 'Loading...')
+              : t('OrdersTable.loadMore', 'Load more')}
           </Button>
         </div>
       )}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Delete Order"
-        description="Are you sure you want to delete this order? This action cannot be undone."
+        title={t('OrdersTable.deleteOrderTitle', 'Delete Order')}
+        description={t(
+          'OrdersTable.deleteOrderConfirm',
+          'Are you sure you want to delete this order? This action cannot be undone.'
+        )}
         onConfirm={confirmDelete}
         loading={!!loadingId}
       />
@@ -817,7 +889,9 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
             className="h-7 text-sm flex-1"
           />
         ) : (
-          <span className="font-medium text-right">{(expandedData?.[field as keyof typeof expandedData] as string) || '-'}</span>
+          <span className="font-medium text-right">
+            {(expandedData?.[field as keyof typeof expandedData] as string) || '-'}
+          </span>
         )}
       </div>
     );

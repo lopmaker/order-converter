@@ -58,6 +58,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useI18n } from '@/components/locale-provider';
 
 interface OrderFormProps {
   data?: ExtractedOrderData;
@@ -75,6 +76,8 @@ interface TariffRow {
 }
 
 export function OrderForm({ data, isLoading, processingStep, rawText, error }: OrderFormProps) {
+  const { t } = useI18n();
+
   // Data Refinement Logic on Init
   const initializeData = (inputData?: ExtractedOrderData): ExtractedOrderData => {
     if (!inputData) return { items: [] };
@@ -86,7 +89,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       refined.items = refined.items.map((item) => ({
         ...item,
         unitPrice: Number(String(item.unitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
-        customerUnitPrice: Number(String(item.customerUnitPrice ?? item.unitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
+        customerUnitPrice:
+          Number(String(item.customerUnitPrice ?? item.unitPrice ?? 0).replace(/[^0-9.-]/g, '')) ||
+          0,
         vendorUnitPrice: Number(String(item.vendorUnitPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0,
         totalQty: Number(String(item.totalQty ?? 0).replace(/[^0-9.-]/g, '')) || 0,
         extension: Number(String(item.extension ?? 0).replace(/[^0-9.-]/g, '')) || 0,
@@ -285,10 +290,10 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const vendorUnitPrice = Number(item.vendorUnitPrice || 0);
     const { tariffRate, baseTariffKey, originCountry } = getTariffContext(item);
     const vendorCost = vendorUnitPrice * qty;
-    const dutyCost = vendorCost * tariffRate;           // real customs duty
-    const handlingCost = dutyCost * 0.4;               // 3PL handling = duty × 0.4
-    const shippingCost = 0.1 * qty;                    // $0.10/pc freight
-    const est3pl = handlingCost + shippingCost;        // total 3PL bill
+    const dutyCost = vendorCost * tariffRate; // real customs duty
+    const handlingCost = dutyCost * 0.4; // 3PL handling = duty × 0.4
+    const shippingCost = 0.1 * qty; // $0.10/pc freight
+    const est3pl = handlingCost + shippingCost; // total 3PL bill
     const revenue = customerUnitPrice * qty;
     const margin = revenue - vendorCost - est3pl;
     const marginRate = revenue > 0 ? margin / revenue : 0;
@@ -297,11 +302,20 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     const handlingPerUnit = qty > 0 ? handlingCost / qty : 0;
     const est3plPerUnit = qty > 0 ? est3pl / qty : 0;
     return {
-      tariffRate, baseTariffKey, originCountry,
-      revenue, vendorCost,
-      dutyCost, handlingCost, shippingCost, est3pl,
-      margin, marginRate,
-      dutyPerUnit, handlingPerUnit, est3plPerUnit,
+      tariffRate,
+      baseTariffKey,
+      originCountry,
+      revenue,
+      vendorCost,
+      dutyCost,
+      handlingCost,
+      shippingCost,
+      est3pl,
+      margin,
+      marginRate,
+      dutyPerUnit,
+      handlingPerUnit,
+      est3plPerUnit,
     };
   };
 
@@ -366,7 +380,11 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
   const handleDownloadExcel = async (mode: PriceMode = 'customer') => {
     const Workbook = (await import('exceljs')).default.Workbook;
     const workbook = new Workbook();
-    const worksheet = workbook.addWorksheet(mode === 'vendor' ? 'Vendor PO' : 'Purchase Order');
+    const worksheet = workbook.addWorksheet(
+      mode === 'vendor'
+        ? t('OrderForm.export.vendorPoSheet', 'Vendor PO')
+        : t('OrderForm.export.purchaseOrderSheet', 'Purchase Order')
+    );
 
     // Layout setup - Wider columns
     worksheet.columns = [
@@ -390,7 +408,10 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     // Title
     worksheet.mergeCells('A1:G1');
     const titleCell = worksheet.getCell('A1');
-    titleCell.value = mode === 'vendor' ? 'VENDOR PURCHASE ORDER' : 'PURCHASE ORDER';
+    titleCell.value =
+      mode === 'vendor'
+        ? t('OrderForm.export.vendorPurchaseOrderTitle', 'VENDOR PURCHASE ORDER')
+        : t('OrderForm.export.purchaseOrderTitle', 'PURCHASE ORDER');
     titleCell.font = { size: 20, bold: true };
     titleCell.alignment = alignCenter;
     worksheet.addRow([]);
@@ -398,36 +419,48 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     // Header Info Grid
     // Row 3: Order # | Date
     worksheet.mergeCells('A3:B3'); // Label + Value
-    worksheet.getCell('A3').value = `PO #: ${formData.vpoNumber || 'DRAFT'}`;
+    worksheet.getCell('A3').value = `${t('OrderForm.export.poNumber', 'PO #')}: ${
+      formData.vpoNumber || t('OrderForm.export.draft', 'DRAFT')
+    }`;
     worksheet.getCell('A3').font = { size: 12, bold: true };
 
     worksheet.mergeCells('E3:G3');
-    worksheet.getCell('E3').value = `Date: ${formData.orderDate || ''}`;
+    worksheet.getCell('E3').value =
+      `${t('OrderForm.export.date', 'Date')}: ${formData.orderDate || ''}`;
     worksheet.getCell('E3').alignment = alignRight;
 
     // Row 4: Customer Name (Merged A-D for width) | Ship Date
     worksheet.mergeCells('A4:D4');
-    worksheet.getCell('A4').value = `Customer: ${formData.customerName || ''}`;
+    worksheet.getCell('A4').value = `${t('OrderForm.export.customer', 'Customer')}: ${
+      formData.customerName || ''
+    }`;
     worksheet.getCell('A4').alignment = wrapText;
 
     // Row 4 Right: Ship Date
     worksheet.mergeCells('E4:G4');
-    worksheet.getCell('E4').value = `Ship Date: ${formData.expShipDate || ''}`;
+    worksheet.getCell('E4').value = `${t('OrderForm.export.shipDate', 'Ship Date')}: ${
+      formData.expShipDate || ''
+    }`;
     worksheet.getCell('E4').alignment = alignRight;
 
     // Row 5-6: Address (Merged A-D for width & height) | R Whs Date & Ref
     worksheet.mergeCells('A5:D6');
-    worksheet.getCell('A5').value = `Address: ${formData.customerAddress || ''}`;
+    worksheet.getCell('A5').value = `${t('OrderForm.export.address', 'Address')}: ${
+      formData.customerAddress || ''
+    }`;
     worksheet.getCell('A5').alignment = wrapText;
 
     // Row 5 Right: R Whs Date
     worksheet.mergeCells('E5:G5');
-    worksheet.getCell('E5').value = `R Whs Date: ${formData.cancelDate || ''}`;
+    worksheet.getCell('E5').value = `${t('OrderForm.export.rWhsDate', 'R Whs Date')}: ${
+      formData.cancelDate || ''
+    }`;
     worksheet.getCell('E5').alignment = alignRight;
 
     // Row 6 Right: Ref
     worksheet.mergeCells('E6:G6');
-    worksheet.getCell('E6').value = `Ref: ${formData.soReference || ''}`;
+    worksheet.getCell('E6').value =
+      `${t('OrderForm.export.ref', 'Ref')}: ${formData.soReference || ''}`;
     worksheet.getCell('E6').alignment = alignRight;
 
     worksheet.addRow([]); // Row 7 Spacer
@@ -435,7 +468,13 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     // Supplier & Ship To Section
     const sectionRowIdx = 8;
     const sectionRow = worksheet.getRow(sectionRowIdx);
-    sectionRow.values = ['SUPPLIER', '', '', '', 'SHIP TO'];
+    sectionRow.values = [
+      t('OrderForm.export.supplier', 'SUPPLIER'),
+      '',
+      '',
+      '',
+      t('OrderForm.export.shipTo', 'SHIP TO'),
+    ];
     sectionRow.font = boldFont;
 
     worksheet.mergeCells(`A${sectionRowIdx}:C${sectionRowIdx}`); // Supplier Header spans A-C
@@ -469,13 +508,19 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     // Terms Section
     const termsStartRow = 12;
     worksheet.mergeCells(`A${termsStartRow}:B${termsStartRow}`);
-    worksheet.getCell(`A${termsStartRow}`).value = `Ship Via: ${formData.shipVia || ''}`;
+    worksheet.getCell(`A${termsStartRow}`).value = `${t('OrderForm.export.shipVia', 'Ship Via')}: ${
+      formData.shipVia || ''
+    }`;
 
     worksheet.mergeCells(`C${termsStartRow}:D${termsStartRow}`);
-    worksheet.getCell(`C${termsStartRow}`).value = `Terms: ${formData.shipmentTerms || ''}`;
+    worksheet.getCell(`C${termsStartRow}`).value = `${t('OrderForm.export.terms', 'Terms')}: ${
+      formData.shipmentTerms || ''
+    }`;
 
     worksheet.mergeCells(`E${termsStartRow}:G${termsStartRow}`);
-    worksheet.getCell(`E${termsStartRow}`).value = `Payment: ${formData.paymentTerms || ''}`;
+    worksheet.getCell(`E${termsStartRow}`).value = `${t('OrderForm.export.payment', 'Payment')}: ${
+      formData.paymentTerms || ''
+    }`;
 
     // Agent removed per request
     // worksheet.getCell(`G${termsStartRow}`).value = `Agent: ${formData.agent || ''}`;
@@ -485,13 +530,13 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
     // Items Table Header
     const headerRow = worksheet.addRow([
-      'Product Code',
-      'Description',
-      'Color',
-      'Material',
-      'Qty',
-      'Unit Price',
-      'Total',
+      t('OrderForm.export.productCode', 'Product Code'),
+      t('OrderForm.export.description', 'Description'),
+      t('OrderForm.export.color', 'Color'),
+      t('OrderForm.export.material', 'Material'),
+      t('OrderForm.export.qty', 'Qty'),
+      t('OrderForm.export.unitPrice', 'Unit Price'),
+      t('OrderForm.export.total', 'Total'),
     ]);
     let firstItemRowNumber = -1;
     let lastItemRowNumber = -1;
@@ -542,7 +587,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         const sizes = Object.entries(item.sizeBreakdown)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
-        const sizeRow = worksheet.addRow(['', `Sizes: ${sizes}`]);
+        const sizeRow = worksheet.addRow(['', `${t('OrderForm.export.sizes', 'Sizes')}: ${sizes}`]);
         sizeRow.font = { italic: true, size: 9, color: { argb: 'FF555555' } };
         worksheet.mergeCells(`B${sizeRow.number}:G${sizeRow.number}`); // Merge for long size string
         sizeRow.getCell(2).alignment = wrapText;
@@ -557,7 +602,15 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       0
     );
 
-    const totalRow = worksheet.addRow(['', '', '', 'TOTAL', totalQty, '', totalAmount]);
+    const totalRow = worksheet.addRow([
+      '',
+      '',
+      '',
+      t('OrderForm.export.totalUpper', 'TOTAL'),
+      totalQty,
+      '',
+      totalAmount,
+    ]);
 
     // Apply Formulas to Totals if items exist
     if (firstItemRowNumber !== -1 && lastItemRowNumber !== -1) {
@@ -586,7 +639,10 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
     worksheet.addRow([]);
     const legalRow = worksheet.addRow([
       '',
-      "Terms & Conditions: 1. Acceptance of this Purchase Order (PO) constitutes a binding contract subject to Buyer's standard terms. 2. Time is of the essence; Buyer reserves the right to cancel or apply penalties for late deliveries. 3. Goods must strictly conform to specifications, quality standards, and all applicable safety laws. 4. Buyer reserves the right to inspect and reject non-conforming goods at Seller's expense. 5. Seller shall indemnify and hold Buyer harmless against all claims, including third-party intellectual property claims. 6. Payment terms begin upon receipt of a correct invoice and conforming goods. 7. WARNING- To ensure compliance with U.S. and other laws, all products supplied to or on behalf of buyer anywhere in the world must not include any labor, materials or components originating from, or produced in, Uzbekistan, Turkmenistan, Or China XUAR Xinjiang Province, or otherwise involving any party on a U.S. government’s XUAR-related entities list. Products will be randomly tested for component origin. Non-compliance will result in the immediate cancellation of orders and a penalty equal to no less than two times the contracted value of the products.",
+      t(
+        'OrderForm.export.legalTerms',
+        "Terms & Conditions: 1. Acceptance of this Purchase Order (PO) constitutes a binding contract subject to Buyer's standard terms. 2. Time is of the essence; Buyer reserves the right to cancel or apply penalties for late deliveries. 3. Goods must strictly conform to specifications, quality standards, and all applicable safety laws. 4. Buyer reserves the right to inspect and reject non-conforming goods at Seller's expense. 5. Seller shall indemnify and hold Buyer harmless against all claims, including third-party intellectual property claims. 6. Payment terms begin upon receipt of a correct invoice and conforming goods. 7. WARNING- To ensure compliance with U.S. and other laws, all products supplied to or on behalf of buyer anywhere in the world must not include any labor, materials or components originating from, or produced in, Uzbekistan, Turkmenistan, Or China XUAR Xinjiang Province, or otherwise involving any party on a U.S. government’s XUAR-related entities list. Products will be randomly tested for component origin. Non-compliance will result in the immediate cancellation of orders and a penalty equal to no less than two times the contracted value of the products."
+      ),
     ]);
     legalRow.font = { size: 9, italic: true, color: { argb: 'FF666666' } };
     worksheet.mergeCells(`B${legalRow.number}:G${legalRow.number}`);
@@ -611,31 +667,71 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       // 1. Title
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text(mode === 'vendor' ? 'VENDOR PURCHASE ORDER' : 'PURCHASE ORDER', 105, 20, {
-        align: 'center',
-      });
+      doc.text(
+        mode === 'vendor'
+          ? t('OrderForm.export.vendorPurchaseOrderTitle', 'VENDOR PURCHASE ORDER')
+          : t('OrderForm.export.purchaseOrderTitle', 'PURCHASE ORDER'),
+        105,
+        20,
+        { align: 'center' }
+      );
 
       // 2. Header Info (Order #, Date, etc)
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(`PO #: ${formData.vpoNumber || 'DRAFT'}`, 14, 35);
+      doc.text(
+        `${t('OrderForm.export.poNumber', 'PO #')}: ${
+          formData.vpoNumber || t('OrderForm.export.draft', 'DRAFT')
+        }`,
+        14,
+        35
+      );
       doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${formData.orderDate || ''}`, 190, 35, { align: 'right' });
+      doc.text(`${t('OrderForm.export.date', 'Date')}: ${formData.orderDate || ''}`, 190, 35, {
+        align: 'right',
+      });
 
-      doc.text(`Customer: ${formData.customerName || ''}`, 14, 42);
-      doc.text(`Ship Date: ${formData.expShipDate || ''}`, 190, 42, { align: 'right' });
+      doc.text(
+        `${t('OrderForm.export.customer', 'Customer')}: ${formData.customerName || ''}`,
+        14,
+        42
+      );
+      doc.text(
+        `${t('OrderForm.export.shipDate', 'Ship Date')}: ${formData.expShipDate || ''}`,
+        190,
+        42,
+        {
+          align: 'right',
+        }
+      );
 
-      doc.text(`Address: ${formData.customerAddress || ''}`, 14, 49, { maxWidth: 100 });
-      doc.text(`R Whs Date: ${formData.cancelDate || ''}`, 190, 49, { align: 'right' });
+      doc.text(
+        `${t('OrderForm.export.address', 'Address')}: ${formData.customerAddress || ''}`,
+        14,
+        49,
+        {
+          maxWidth: 100,
+        }
+      );
+      doc.text(
+        `${t('OrderForm.export.rWhsDate', 'R Whs Date')}: ${formData.cancelDate || ''}`,
+        190,
+        49,
+        {
+          align: 'right',
+        }
+      );
 
-      doc.text(`Ref: ${formData.soReference || ''}`, 190, 56, { align: 'right' });
+      doc.text(`${t('OrderForm.export.ref', 'Ref')}: ${formData.soReference || ''}`, 190, 56, {
+        align: 'right',
+      });
 
       // 3. Supplier & Ship To Details
       let yPos = 70;
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('SUPPLIER', 14, yPos);
-      doc.text('SHIP TO', 110, yPos);
+      doc.text(t('OrderForm.export.supplier', 'SUPPLIER'), 14, yPos);
+      doc.text(t('OrderForm.export.shipTo', 'SHIP TO'), 110, yPos);
 
       doc.line(14, yPos + 1, 90, yPos + 1); // Underline Supplier
       doc.line(110, yPos + 1, 190, yPos + 1); // Underline Ship To
@@ -661,35 +757,47 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       // 4. Terms & Conditions Line
       doc.setFontSize(9);
       const termsY = yPos;
-      doc.text(`Ship Via: ${formData.shipVia || ''}`, 14, termsY);
-      doc.text(`Terms: ${formData.shipmentTerms || ''}`, 70, termsY);
-      doc.text(`Payment: ${formData.paymentTerms || ''}`, 120, termsY);
+      doc.text(
+        `${t('OrderForm.export.shipVia', 'Ship Via')}: ${formData.shipVia || ''}`,
+        14,
+        termsY
+      );
+      doc.text(
+        `${t('OrderForm.export.terms', 'Terms')}: ${formData.shipmentTerms || ''}`,
+        70,
+        termsY
+      );
+      doc.text(
+        `${t('OrderForm.export.payment', 'Payment')}: ${formData.paymentTerms || ''}`,
+        120,
+        termsY
+      );
       // doc.text(`Agent: ${formData.agent || ''}`, 165, termsY); // Removed Agent
 
       yPos += 5;
 
       // 5. Items Table using autoTable
       const tableColumn = [
-        'Product Code',
-        'Description',
-        'Color',
-        'Material',
-        'Qty',
-        'Unit Price',
-        'Total',
+        t('OrderForm.export.productCode', 'Product Code'),
+        t('OrderForm.export.description', 'Description'),
+        t('OrderForm.export.color', 'Color'),
+        t('OrderForm.export.material', 'Material'),
+        t('OrderForm.export.qty', 'Qty'),
+        t('OrderForm.export.unitPrice', 'Unit Price'),
+        t('OrderForm.export.total', 'Total'),
       ];
       type PdfTableCell =
         | string
         | number
         | {
-          content: string | number;
-          colSpan?: number;
-          styles?: {
-            fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic';
-            textColor?: [number, number, number];
-            halign?: 'left' | 'center' | 'right';
+            content: string | number;
+            colSpan?: number;
+            styles?: {
+              fontStyle?: 'normal' | 'bold' | 'italic' | 'bolditalic';
+              textColor?: [number, number, number];
+              halign?: 'left' | 'center' | 'right';
+            };
           };
-        };
       type PdfTableRow = PdfTableCell[];
       const tableRows: PdfTableRow[] = [];
 
@@ -715,7 +823,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
           // Add a row specifically for sizes - spanned manually via string concat or visual row
           tableRows.push([
             {
-              content: `Sizes: ${sizes}`,
+              content: `${t('OrderForm.export.sizes', 'Sizes')}: ${sizes}`,
               colSpan: 7,
               styles: { fontStyle: 'italic', textColor: [100, 100, 100] },
             },
@@ -734,7 +842,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         '',
         '',
         '',
-        'TOTAL',
+        t('OrderForm.export.totalUpper', 'TOTAL'),
         { content: totalQty, styles: { halign: 'center', fontStyle: 'bold' } },
         '',
         { content: `$${totalAmount.toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold' } },
@@ -770,13 +878,13 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(100, 100, 100);
 
-      const legalLines = [
-        "Terms & Conditions: 1. Acceptance of this Purchase Order (PO) constitutes a binding contract subject to Buyer's standard terms. 2. Time is of the essence; Buyer reserves the right to cancel or apply penalties for late deliveries.",
-        "3. Goods must strictly conform to specifications, quality standards, and all applicable safety laws. 4. Buyer reserves the right to inspect and reject non-conforming goods at Seller's expense.",
-        '5. Seller shall indemnify and hold Buyer harmless against all claims, including third-party intellectual property claims. 6. Payment terms begin upon receipt of a correct invoice and conforming goods.',
-        '7. WARNING- To ensure compliance with U.S. and other laws, all products supplied to or on behalf of buyer anywhere in the world must not include any labor, materials or components originating from, or produced in, Uzbekistan, Turkmenistan, Or China XUAR Xinjiang Province, or otherwise involving any party on a U.S. government’s XUAR-related entities list. Products will be randomly tested for component origin. Non-compliance will result in the immediate cancellation of orders and a penalty equal to no less than two times the contracted value of the products.',
-      ];
-      const splitLegal = doc.splitTextToSize(legalLines.join(' '), 180);
+      const splitLegal = doc.splitTextToSize(
+        t(
+          'OrderForm.export.legalTerms',
+          "Terms & Conditions: 1. Acceptance of this Purchase Order (PO) constitutes a binding contract subject to Buyer's standard terms. 2. Time is of the essence; Buyer reserves the right to cancel or apply penalties for late deliveries. 3. Goods must strictly conform to specifications, quality standards, and all applicable safety laws. 4. Buyer reserves the right to inspect and reject non-conforming goods at Seller's expense. 5. Seller shall indemnify and hold Buyer harmless against all claims, including third-party intellectual property claims. 6. Payment terms begin upon receipt of a correct invoice and conforming goods. 7. WARNING- To ensure compliance with U.S. and other laws, all products supplied to or on behalf of buyer anywhere in the world must not include any labor, materials or components originating from, or produced in, Uzbekistan, Turkmenistan, Or China XUAR Xinjiang Province, or otherwise involving any party on a U.S. government’s XUAR-related entities list. Products will be randomly tested for component origin. Non-compliance will result in the immediate cancellation of orders and a penalty equal to no less than two times the contracted value of the products."
+        ),
+        180
+      );
 
       // Determine Y position
       const docWithAutoTable = doc as typeof doc & { lastAutoTable?: { finalY: number } };
@@ -796,7 +904,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         doc.addPage();
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text('Customer Notes', 14, 20);
+        doc.text(t('OrderForm.customerNotes', 'Customer Notes'), 14, 20);
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -810,8 +918,8 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       console.error('PDF Export failed', error);
       setAlertConfig({
         open: true,
-        title: 'Export Failed',
-        message: 'Failed to export PDF.',
+        title: t('OrderForm.exportFailed', 'Export Failed'),
+        message: t('OrderForm.failedToExportPdf', 'Failed to export PDF.'),
         isError: true,
       });
     }
@@ -859,17 +967,20 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
           </div>
           <div>
             <h2 className="text-base font-semibold tracking-tight">
-              {formData.vpoNumber ? formData.vpoNumber : 'Order Details'}
+              {formData.vpoNumber
+                ? formData.vpoNumber
+                : t('OrderForm.orderDetails', 'Order Details')}
             </h2>
             <p className="text-xs text-muted-foreground">
               {isLoading ? (
-                processingStep || 'Processing...'
+                processingStep || t('HomePage.processing', 'Processing...')
               ) : data ? (
                 <span className="flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-amber-500" /> AI extracted — review & edit
+                  <Sparkles className="h-3 w-3 text-amber-500" />{' '}
+                  {t('OrderForm.aiExtracted', 'AI extracted — review & edit')}
                 </span>
               ) : (
-                'Upload a PDF to get started'
+                t('OrderForm.uploadToStart', 'Upload a PDF to get started')
               )}
             </p>
           </div>
@@ -912,22 +1023,25 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
 
                 if (!res.ok) {
                   const errData = await res.json().catch(() => ({}));
-                  throw new Error(errData.error || 'Failed to save');
+                  throw new Error(errData.error || t('OrderForm.failedToSave', 'Failed to save'));
                 }
 
                 setAlertConfig({
                   open: true,
-                  title: 'Success',
-                  message: 'Order saved to Dashboard!',
+                  title: t('Common.success', 'Success'),
+                  message: t('OrderForm.savedToDashboard', 'Order saved to Dashboard!'),
                   isError: false,
                 });
                 setIsSaved(true);
               } catch (e: unknown) {
-                const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+                const errorMessage =
+                  e instanceof Error ? e.message : t('OrderForm.unknownError', 'Unknown error');
                 setAlertConfig({
                   open: true,
-                  title: 'Save Failed',
-                  message: `Failed to save order: ${errorMessage}`,
+                  title: t('OrderForm.saveFailed', 'Save Failed'),
+                  message: t('OrderForm.failedToSaveWithReason', 'Failed to save order: {error}', {
+                    error: errorMessage,
+                  }),
                   isError: true,
                 });
                 console.error('Save Error:', e);
@@ -935,7 +1049,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             }}
           >
             <Save className="h-4 w-4 mr-2" />
-            Save
+            {t('Common.save', 'Save')}
           </Button>
 
           <DropdownMenu
@@ -945,8 +1059,11 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
               if (open && !isSaved) {
                 setAlertConfig({
                   open: true,
-                  title: 'Action Required',
-                  message: 'You must save the order first before generating a Vendor PO.',
+                  title: t('OrderForm.actionRequired', 'Action Required'),
+                  message: t(
+                    'OrderForm.saveBeforeVendorPo',
+                    'You must save the order first before generating a Vendor PO.'
+                  ),
                   isError: true,
                 });
                 setIsMenuOpen(false);
@@ -961,24 +1078,26 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-sm"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Generate Vendor PO
+                {t('OrderForm.generateVendorPo', 'Generate Vendor PO')}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {t('OrderForm.exportOptions', 'Export Options')}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSaveJson}>
                 <Download className="h-4 w-4 mr-2" />
-                Save as JSON
+                {t('OrderForm.saveAsJson', 'Save as JSON')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleDownloadExcel('vendor')}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Export Vendor PO (Excel FOB)
+                {t('OrderForm.exportVendorPoExcel', 'Export Vendor PO (Excel FOB)')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleDownloadPdf('vendor')}>
                 <FileText className="h-4 w-4 mr-2" />
-                Export Vendor PO (PDF FOB)
+                {t('OrderForm.exportVendorPoPdf', 'Export Vendor PO (PDF FOB)')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -990,7 +1109,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
         <div className="mx-5 mt-3 flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-sm">
           <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-destructive">Error</p>
+            <p className="font-medium text-destructive">{t('Common.error', 'Error')}</p>
             <p className="text-destructive/80 text-xs mt-0.5">{error}</p>
           </div>
         </div>
@@ -1000,26 +1119,46 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
       {formData.items.length > 0 && (
         <div className="grid grid-cols-3 gap-3 px-5 pt-4 pb-2 shrink-0">
           <div className="rounded-xl border bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-card p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total Pcs</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              {t('OrderForm.totalPcs', 'Total Pcs')}
+            </p>
             <p className="text-xl font-bold tabular-nums mt-0.5">{totalQty.toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground">{uniqueStyles} styles</p>
+            <p className="text-[10px] text-muted-foreground">
+              {t('OrderForm.stylesCount', '{count} styles', { count: uniqueStyles })}
+            </p>
           </div>
           <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-950/20 dark:to-card p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Sales Value</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              {t('OrderForm.salesValue', 'Sales Value')}
+            </p>
             <p className="text-xl font-bold tabular-nums mt-0.5">
-              ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              $
+              {totalAmount.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              ${(totalAmount / (totalQty || 1)).toFixed(2)} avg/pc
+              {t('OrderForm.avgPerPc', '{amount} avg/pc', {
+                amount: `$${(totalAmount / (totalQty || 1)).toFixed(2)}`,
+              })}
             </p>
           </div>
           <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 dark:to-card p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Vendor Cost</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              {t('OrderForm.vendorCost', 'Vendor Cost')}
+            </p>
             <p className="text-xl font-bold tabular-nums mt-0.5">
-              ${totalVendorCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              $
+              {totalVendorCost.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              ${(totalVendorCost / (totalQty || 1)).toFixed(2)} avg/pc
+              {t('OrderForm.avgPerPc', '{amount} avg/pc', {
+                amount: `$${(totalVendorCost / (totalQty || 1)).toFixed(2)}`,
+              })}
             </p>
           </div>
         </div>
@@ -1032,19 +1171,25 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize ${activeTab === tab
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
-                }`}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors capitalize ${
+                activeTab === tab
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+              }`}
             >
-              {tab === 'items' ? `Items (${formData.items.length})` : tab}
+              {tab === 'summary'
+                ? t('OrderForm.tabSummary', 'Summary')
+                : tab === 'items'
+                  ? t('OrderForm.tabItems', 'Items ({count})', { count: formData.items.length })
+                  : tab === 'shipping'
+                    ? t('OrderForm.tabShipping', 'Shipping')
+                    : t('OrderForm.tabNotes', 'Notes')}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-5">
-
             {/* ═══ TAB: Summary ═══════════════════════════ */}
             {activeTab === 'summary' && (
               <div className="space-y-5 animate-in fade-in duration-200">
@@ -1056,10 +1201,20 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       className="w-full flex items-center justify-between p-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium"
                     >
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px]">RAW</Badge>
-                        <span className="text-xs">Extracted Text ({rawText.split('\n').filter(Boolean).length} lines)</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {t('OrderForm.raw', 'RAW')}
+                        </Badge>
+                        <span className="text-xs">
+                          {t('OrderForm.extractedTextLines', 'Extracted Text ({count} lines)', {
+                            count: rawText.split('\n').filter(Boolean).length,
+                          })}
+                        </span>
                       </div>
-                      {showRawText ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {showRawText ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
                     </button>
                     {showRawText && (
                       <pre className="p-3 text-xs text-muted-foreground bg-muted/10 max-h-48 overflow-auto whitespace-pre-wrap font-mono border-t">
@@ -1073,11 +1228,15 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 <div className="rounded-xl border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Order Information</h3>
+                    <h3 className="text-sm font-semibold">
+                      {t('OrderForm.orderInformation', 'Order Information')}
+                    </h3>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">VPO Number</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.vpoNumber', 'VPO Number')}
+                      </Label>
                       <Input
                         value={formData.vpoNumber || ''}
                         onChange={(e) => updateField('vpoNumber', e.target.value)}
@@ -1086,7 +1245,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Order Date</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.orderDate', 'Order Date')}
+                      </Label>
                       <Input
                         value={formData.orderDate || ''}
                         onChange={(e) => updateField('orderDate', e.target.value)}
@@ -1095,7 +1256,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">SO Reference</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrderForm.soReference', 'SO Reference')}
+                      </Label>
                       <Input
                         value={formData.soReference || ''}
                         onChange={(e) => updateField('soReference', e.target.value)}
@@ -1104,7 +1267,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Exp Ship Date</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.expShip', 'Exp Ship')}
+                      </Label>
                       <Input
                         value={formData.expShipDate || ''}
                         onChange={(e) => updateField('expShipDate', e.target.value)}
@@ -1113,7 +1278,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">R Whs Date</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.rWhs', 'R Whs')}
+                      </Label>
                       <Input
                         value={formData.cancelDate || ''}
                         onChange={(e) => updateField('cancelDate', e.target.value)}
@@ -1133,8 +1300,10 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         {formData.customerName === BUYER_OPTIONS.HK.name ? 'HK' : 'NY'}
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold">Buyer</h3>
-                        <p className="text-[11px] text-muted-foreground">Bill To</p>
+                        <h3 className="text-sm font-semibold">{t('OrderForm.buyer', 'Buyer')}</h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('OrderForm.billTo', 'Bill To')}
+                        </p>
                       </div>
                     </div>
                     <Select
@@ -1149,7 +1318,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                       }}
                     >
                       <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select Buyer" />
+                        <SelectValue placeholder={t('OrderForm.selectBuyer', 'Select Buyer')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="NY">Mijenro International LLC (NY)</SelectItem>
@@ -1170,20 +1339,24 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         {getSupplierInitials(formData.supplierName)}
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold">Supplier</h3>
-                        <p className="text-[11px] text-muted-foreground">Factory</p>
+                        <h3 className="text-sm font-semibold">
+                          {t('OrdersTable.supplier', 'Supplier')}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground">
+                          {t('OrderForm.factory', 'Factory')}
+                        </p>
                       </div>
                     </div>
                     <Input
                       value={formData.supplierName || ''}
                       onChange={(e) => updateField('supplierName', e.target.value)}
-                      placeholder="Supplier name"
+                      placeholder={t('OrderForm.supplierName', 'Supplier name')}
                       className="h-8 text-sm"
                     />
                     <Input
                       value={formData.supplierAddress || ''}
                       onChange={(e) => updateField('supplierAddress', e.target.value)}
-                      placeholder="Supplier address"
+                      placeholder={t('OrderForm.supplierAddress', 'Supplier address')}
                       className="h-8 text-sm"
                     />
                   </div>
@@ -1196,26 +1369,33 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
               <div className="space-y-4 animate-in fade-in duration-200">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Line Items</h3>
+                    <h3 className="text-sm font-semibold">
+                      {t('OrderForm.lineItems', 'Line Items')}
+                    </h3>
                     {formData.items.length > 0 && (
                       <Badge variant="secondary" className="text-[10px]">
-                        {totalQty.toLocaleString()} pcs · ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} sales
+                        {t('OrderForm.itemsBadge', '{qty} pcs · {sales} sales', {
+                          qty: totalQty.toLocaleString(),
+                          sales: `$${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+                        })}
                       </Badge>
                     )}
                   </div>
                   <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addItem}>
                     <Plus className="h-3 w-3 mr-1" />
-                    Add Item
+                    {t('OrderForm.addItem', 'Add Item')}
                   </Button>
                 </div>
 
                 {formData.items.length === 0 ? (
                   <div className="border-2 border-dashed rounded-xl p-10 text-center bg-muted/5">
                     <Package className="h-8 w-8 text-muted-foreground/40 mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground mb-3">No items yet</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {t('OrderForm.noItemsYet', 'No items yet')}
+                    </p>
                     <Button variant="outline" size="sm" onClick={addItem}>
                       <Plus className="h-3 w-3 mr-1" />
-                      Add First Item
+                      {t('OrderForm.addFirstItem', 'Add First Item')}
                     </Button>
                   </div>
                 ) : (
@@ -1226,20 +1406,20 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                         <div className="grid grid-cols-[1fr_1.5fr_90px_90px_90px_110px_36px] gap-2 p-2.5 items-center text-sm">
                           <Input
                             className="h-7 text-xs font-mono"
-                            placeholder="Product Code"
+                            placeholder={t('OrderForm.productCode', 'Product Code')}
                             value={item.productCode}
                             onChange={(e) => updateItem(idx, 'productCode', e.target.value)}
                           />
                           <Input
                             className="h-7 text-xs"
-                            placeholder="Description"
+                            placeholder={t('OrdersTable.description', 'Description')}
                             value={item.description}
                             onChange={(e) => updateItem(idx, 'description', e.target.value)}
                           />
                           <Input
                             type="number"
                             className="h-7 text-xs text-right"
-                            placeholder="Qty"
+                            placeholder={t('OrdersTable.qty', 'Qty')}
                             value={item.totalQty || ''}
                             onChange={(e) => updateItem(idx, 'totalQty', Number(e.target.value))}
                           />
@@ -1247,7 +1427,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             type="number"
                             step="0.01"
                             className="h-7 text-xs text-right"
-                            placeholder="Cust $"
+                            placeholder={t('OrdersTable.custPrice', 'Cust $')}
                             value={(item.customerUnitPrice ?? item.unitPrice) || ''}
                             onChange={(e) =>
                               updateItem(idx, 'customerUnitPrice', Number(e.target.value))
@@ -1257,12 +1437,18 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             type="number"
                             step="0.01"
                             className="h-7 text-xs text-right"
-                            placeholder="Vendor $"
+                            placeholder={t('OrdersTable.vendorPrice', 'Vendor $')}
                             value={item.vendorUnitPrice || ''}
-                            onChange={(e) => updateItem(idx, 'vendorUnitPrice', Number(e.target.value))}
+                            onChange={(e) =>
+                              updateItem(idx, 'vendorUnitPrice', Number(e.target.value))
+                            }
                           />
                           <div className="text-xs text-right font-medium pr-1 tabular-nums">
-                            ${(Number((item.customerUnitPrice ?? item.unitPrice) || 0) * Number(item.totalQty || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            $
+                            {(
+                              Number((item.customerUnitPrice ?? item.unitPrice) || 0) *
+                              Number(item.totalQty || 0)
+                            ).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                           <Button
                             variant="ghost"
@@ -1283,7 +1469,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                           <div className="p-3 border-t bg-muted/5 space-y-3">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Color</Label>
+                                <Label className="text-[10px] text-muted-foreground">
+                                  {t('OrdersTable.color', 'Color')}
+                                </Label>
                                 <Input
                                   className="h-7 text-xs"
                                   value={item.color || ''}
@@ -1291,7 +1479,9 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Collection</Label>
+                                <Label className="text-[10px] text-muted-foreground">
+                                  {t('OrdersTable.collection', 'Collection')}
+                                </Label>
                                 <Input
                                   className="h-7 text-xs"
                                   value={item.collection || ''}
@@ -1299,13 +1489,17 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 />
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Tariff Key</Label>
+                                <Label className="text-[10px] text-muted-foreground">
+                                  {t('TariffManager.tariffKey', 'Tariff Key')}
+                                </Label>
                                 <div className="h-7 rounded-md border bg-muted/30 px-2 text-[10px] flex items-center truncate">
                                   {getEstimate(item).baseTariffKey}
                                 </div>
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Material</Label>
+                                <Label className="text-[10px] text-muted-foreground">
+                                  {t('OrdersTable.material', 'Material')}
+                                </Label>
                                 <Input
                                   className="h-7 text-xs"
                                   value={item.material || ''}
@@ -1314,32 +1508,50 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                               </div>
                             </div>
 
-
                             {/* Per-Unit Cost Breakdown */}
                             {(() => {
                               const est = getEstimate(item);
                               return (
                                 <div className="text-[10px] rounded-lg border bg-muted/10 px-3 py-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5">
                                   <div>
-                                    <span className="text-muted-foreground">Tariff Key: </span>
-                                    <span className="font-medium" title={est.baseTariffKey}>{est.baseTariffKey}</span>
+                                    <span className="text-muted-foreground">
+                                      {t('TariffManager.tariffKey', 'Tariff Key')}:{' '}
+                                    </span>
+                                    <span className="font-medium" title={est.baseTariffKey}>
+                                      {est.baseTariffKey}
+                                    </span>
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">Duty Rate: </span>
-                                    <span className="font-medium">{(est.tariffRate * 100).toFixed(1)}%</span>
+                                    <span className="text-muted-foreground">
+                                      {t('OrderForm.dutyRate', 'Duty Rate')}:{' '}
+                                    </span>
+                                    <span className="font-medium">
+                                      {(est.tariffRate * 100).toFixed(1)}%
+                                    </span>
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">3PL Duty/pc: </span>
-                                    <span className="font-medium">${est.handlingPerUnit.toFixed(3)}</span>
+                                    <span className="text-muted-foreground">
+                                      {t('OrderForm.thirdPartyDutyPerPc', '3PL Duty/pc')}:{' '}
+                                    </span>
+                                    <span className="font-medium">
+                                      ${est.handlingPerUnit.toFixed(3)}
+                                    </span>
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">3PL Ship/pc: </span>
+                                    <span className="text-muted-foreground">
+                                      {t('OrderForm.thirdPartyShipPerPc', '3PL Ship/pc')}:{' '}
+                                    </span>
                                     <span className="font-medium">$0.100</span>
                                   </div>
                                   <div className="font-semibold col-span-2">
-                                    <span className="text-muted-foreground">3PL Total/pc: </span>
+                                    <span className="text-muted-foreground">
+                                      {t('OrderForm.thirdPartyTotalPerPc', '3PL Total/pc')}:{' '}
+                                    </span>
                                     <span>${est.est3plPerUnit.toFixed(3)}</span>
-                                    <span className="text-muted-foreground ml-1"> — Total: ${est.est3pl.toFixed(2)}</span>
+                                    <span className="text-muted-foreground ml-1">
+                                      {' '}
+                                      — {t('Workflow.total', 'Total')}: ${est.est3pl.toFixed(2)}
+                                    </span>
                                   </div>
                                 </div>
                               );
@@ -1348,10 +1560,15 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                             {/* Size Breakdown */}
                             {item.sizeBreakdown && Object.keys(item.sizeBreakdown).length > 0 && (
                               <div className="space-y-1">
-                                <Label className="text-[10px] text-muted-foreground">Size Breakdown</Label>
+                                <Label className="text-[10px] text-muted-foreground">
+                                  {t('OrderForm.sizeBreakdown', 'Size Breakdown')}
+                                </Label>
                                 <div className="flex flex-wrap gap-1.5">
                                   {Object.entries(item.sizeBreakdown).map(([size, qty]) => (
-                                    <div key={size} className="flex items-center gap-1 bg-muted/40 rounded-md px-2 py-0.5 text-[10px]">
+                                    <div
+                                      key={size}
+                                      className="flex items-center gap-1 bg-muted/40 rounded-md px-2 py-0.5 text-[10px]"
+                                    >
                                       <span className="font-medium">{size}:</span>
                                       <span>{qty}</span>
                                     </div>
@@ -1368,7 +1585,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                                 onClick={() => removeItem(idx)}
                               >
                                 <Trash2 className="h-3 w-3 mr-1" />
-                                Remove
+                                {t('OrderForm.remove', 'Remove')}
                               </Button>
                             </div>
                           </div>
@@ -1379,17 +1596,25 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                     {/* Totals Bar */}
                     <div className="flex justify-end gap-5 p-3 bg-muted/20 rounded-xl text-sm">
                       <div>
-                        <span className="text-muted-foreground text-xs">Qty:</span>{' '}
-                        <span className="font-semibold tabular-nums">{totalQty.toLocaleString()}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {t('OrdersTable.qty', 'Qty')}:
+                        </span>{' '}
+                        <span className="font-semibold tabular-nums">
+                          {totalQty.toLocaleString()}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Sales:</span>{' '}
+                        <span className="text-muted-foreground text-xs">
+                          {t('FinanceManager.sales', 'Sales')}:
+                        </span>{' '}
                         <span className="font-semibold tabular-nums">
                           ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground text-xs">Vendor Cost:</span>{' '}
+                        <span className="text-muted-foreground text-xs">
+                          {t('OrderForm.vendorCost', 'Vendor Cost')}:
+                        </span>{' '}
                         <span className="font-semibold tabular-nums">
                           ${totalVendorCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </span>
@@ -1406,46 +1631,55 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 <div className="rounded-xl border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <Truck className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Shipping & Terms</h3>
+                    <h3 className="text-sm font-semibold">
+                      {t('OrderForm.shippingAndTerms', 'Shipping & Terms')}
+                    </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Ship To</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.shipTo', 'Ship To')}
+                      </Label>
                       <Input
                         value={formData.shipTo || ''}
                         onChange={(e) => updateField('shipTo', e.target.value)}
-                        placeholder="Ship-to address"
+                        placeholder={t('OrderForm.shipToAddress', 'Ship-to address')}
                         className="h-8 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Ship Via</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.shipVia', 'Ship Via')}
+                      </Label>
                       <Input
                         value={formData.shipVia || ''}
                         onChange={(e) => updateField('shipVia', e.target.value)}
-                        placeholder="e.g. Ocean Frt"
+                        placeholder={t('OrderForm.shipViaExample', 'e.g. Ocean Frt')}
                         className="h-8 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Shipment Terms</Label>
+                      <Label className="text-[11px] text-muted-foreground">
+                        {t('OrdersTable.shipTerms', 'Ship Terms')}
+                      </Label>
                       <Input
                         value={formData.shipmentTerms || ''}
                         onChange={(e) => updateField('shipmentTerms', e.target.value)}
-                        placeholder="e.g. FOB"
+                        placeholder={t('OrderForm.shipmentTermsExample', 'e.g. FOB')}
                         className="h-8 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <CreditCard className="h-3 w-3" /> Payment Terms
+                        <CreditCard className="h-3 w-3" />{' '}
+                        {t('OrderForm.paymentTerms', 'Payment Terms')}
                       </Label>
                       <Select
                         value={formData.paymentTerms || ''}
                         onValueChange={(val) => updateField('paymentTerms', val)}
                       >
                         <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Select Terms" />
+                          <SelectValue placeholder={t('OrderForm.selectTerms', 'Select Terms')} />
                         </SelectTrigger>
                         <SelectContent>
                           {PAYMENT_TERMS.map((term) => (
@@ -1467,10 +1701,15 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 <div className="rounded-xl border bg-card p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Customer Notes</h3>
+                    <h3 className="text-sm font-semibold">
+                      {t('OrderForm.customerNotes', 'Customer Notes')}
+                    </h3>
                   </div>
                   <Textarea
-                    placeholder="Enter notes here (will appear on a separate page in PDF export)..."
+                    placeholder={t(
+                      'OrderForm.notesPlaceholder',
+                      'Enter notes here (will appear on a separate page in PDF export)...'
+                    )}
                     value={formData.customerNotes || ''}
                     onChange={(e) => updateField('customerNotes', e.target.value)}
                     className="min-h-[200px] text-sm"
@@ -1478,7 +1717,6 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
@@ -1505,7 +1743,7 @@ export function OrderForm({ data, isLoading, processingStep, rawText, error }: O
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setAlertConfig((prev) => ({ ...prev, open: false }))}>
-              Close
+              {t('Common.close', 'Close')}
             </Button>
           </DialogFooter>
         </DialogContent>

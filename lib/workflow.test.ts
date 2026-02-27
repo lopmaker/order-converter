@@ -13,9 +13,9 @@ describe('calculateEstimatedMargin', () => {
     expect(result.customerRevenue).toBe(1000);
     expect(result.vendorCost).toBe(500);
     expect(result.dutyCost).toBe(50);
-    expect(result.estimated3plCost).toBe(26); // 500 * 0.1 * 0.5 + 0.1 * 10 = 25 + 1
-    expect(result.estimatedMargin).toBe(424); // 1000 - 500 - 50 - 26
-    expect(result.estimatedMarginRate).toBe(0.424); // 424 / 1000
+    expect(result.estimated3plCost).toBe(21); // (500 * 0.1 * 0.4) + (0.1 * 10) = 20 + 1
+    expect(result.estimatedMargin).toBe(479); // 1000 - 500 - 21
+    expect(result.estimatedMarginRate).toBe(0.479); // 479 / 1000
   });
 
   it('should return all zeros when all inputs are zero', () => {

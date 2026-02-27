@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import { toHtmlLang } from '@/lib/i18n';
+import { getServerLocale } from '@/lib/i18n-server';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
@@ -10,11 +12,13 @@ export const metadata: Metadata = {
   description: 'Convert purchase order PDFs into editable structured orders',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getServerLocale();
+
   return (
-    <html lang="en">
+    <html lang={toHtmlLang(locale)}>
       <body className={`${inter.className} antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers locale={locale}>{children}</Providers>
       </body>
     </html>
   );
