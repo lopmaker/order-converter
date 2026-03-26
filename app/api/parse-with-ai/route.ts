@@ -2,6 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getErrorMessage } from '@/lib/api-helpers';
 
+// -------------------------------------------------------------------
+// MiniMax fallback helper (OpenAI-compatible API)
+// -------------------------------------------------------------------
+async function callMiniMax(systemPrompt: string, userMessage: string): Promise<string> {
+  const apiKey = process.env.MINIMAX_API_KEY;
+  if (!apiKey) throw new Error('MINIMAX_API_KEY not configured');
+
+  const response = await fetch('https://api.minimaxi.com/v1/text/chatcompletion_v2', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'MiniMax-M2.7',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`MiniMax API error ${response.status}: ${err}`);
+  }
+
+  const json = (await response.json()) as {
+    choices?: { message?: { content?: string } }[];
+  };
+  const content = json.choices?.[0]?.message?.content;
+  if (!content) throw new Error('MiniMax returned empty content');
+  return content;
+}
+
 export const maxDuration = 60; // Max for Vercel Hobby plan
 
 const SYSTEM_PROMPT = `You are a purchase order data extraction assistant. You receive raw text extracted from a Vendor Purchase Order (VPO) PDF and must return a structured JSON object.
@@ -85,11 +121,9 @@ export async function POST(req: NextRequest) {
 
     // Strict fallbacks to ensure we always have an available model
     const MODELS = [
-      'gemini-2.5-pro',
       'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash',
+      'gemini-3.0-flash',
+      'gemini-3.1-flash-lite',
     ];
     let result: { response: { text: () => string } } | null = null;
     let lastError: unknown;
@@ -132,14 +166,27 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // -------------------------------------------------------------------
+    // Fallback: MiniMax 2.7 when all Gemini models fail
+    // -------------------------------------------------------------------
+    let responseText: string;
     if (!result) {
-      console.error('All models failed. Last error:', lastError);
-      throw (
-        lastError ?? new Error('Failed to get response from Gemini API after trying all models')
-      );
+      console.warn('All Gemini models failed, falling back to MiniMax 2.7...');
+      try {
+        responseText = await callMiniMax(
+          SYSTEM_PROMPT,
+          `Here is the raw text extracted from a VPO PDF. Parse it and return the structured JSON:\n\n${text}`
+        );
+        console.log('MiniMax 2.7 fallback succeeded.');
+      } catch (miniMaxError) {
+        console.error('MiniMax fallback also failed:', miniMaxError);
+        throw (
+          lastError ?? new Error('All AI models (Gemini + MiniMax) failed to process the request')
+        );
+      }
+    } else {
+      responseText = result.response.text();
     }
-
-    const responseText = result.response.text();
 
     let parsed: unknown;
     try {
