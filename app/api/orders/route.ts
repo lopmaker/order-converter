@@ -15,7 +15,6 @@ export async function GET(request: Request) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc'; // 'asc' or 'desc'
     const customerNameFilter = searchParams.get('customerName');
-    const statusFilter = searchParams.get('status');
     const workflowStatusFilter = searchParams.get('workflowStatus');
     const vpoNumberFilter = searchParams.get('vpoNumber');
 
@@ -24,9 +23,6 @@ export async function GET(request: Request) {
     const whereConditions = [];
     if (customerNameFilter) {
       whereConditions.push(eq(orders.customerName, customerNameFilter));
-    }
-    if (statusFilter) {
-      whereConditions.push(eq(orders.status, statusFilter));
     }
     if (workflowStatusFilter) {
       whereConditions.push(eq(orders.workflowStatus, workflowStatusFilter));

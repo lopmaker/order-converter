@@ -11,7 +11,7 @@ import {
   vendorBills,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { parseDecimalInput, round2 } from '@/lib/workflow';
+import { parseDecimalInput, round2 } from '@/lib/finance-math';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -176,7 +176,7 @@ export async function GET(_req: Request, { params }: RouteContext) {
         type: 'ORDER_DELIVERED',
         title: 'Order Delivered',
         description: 'Order delivered to customer warehouse.',
-        status: 'AR_AP_OPEN',
+        status: 'SETTLEMENT',
         entityType: 'ORDER',
         entityId: order.id,
         amount: null,

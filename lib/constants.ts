@@ -22,13 +22,18 @@ export const BUYER_OPTIONS = {
 
 export const PAYMENT_TERMS = ['Net 60 days', 'Net 90 days'] as const;
 
-// ─── Workflow Status Enum ───────────────────────────────────────
+// ─── Workflow Stage Enum ────────────────────────────────────────
+//
+// 5 business stages mirroring the trading company's real-world flow:
+//   下单 (DRAFTING) → 生产 (PRODUCTION) → 物流 (LOGISTICS) → 结算 (SETTLEMENT) → 已关闭 (CLOSED)
+//
+// The authoritative stage definitions (labels, matchers) live in lib/workflow-stages.ts.
 
 export const WORKFLOW_STATUS = {
-  PO_UPLOADED: 'PO_UPLOADED',
-  SHIPPING_DOC_SENT: 'SHIPPING_DOC_SENT',
-  IN_TRANSIT: 'IN_TRANSIT',
-  AR_AP_OPEN: 'AR_AP_OPEN',
+  DRAFTING: 'DRAFTING',
+  PRODUCTION: 'PRODUCTION',
+  LOGISTICS: 'LOGISTICS',
+  SETTLEMENT: 'SETTLEMENT',
   CLOSED: 'CLOSED',
 } as const;
 

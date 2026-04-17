@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { payments, vendorBills } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
-import { parseDecimalInput } from '@/lib/workflow';
+import { parseDecimalInput } from '@/lib/finance-math';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
 import { vendorBillSchema } from '@/lib/schemas';
 import { createVendorBill } from '@/services/finance.service';

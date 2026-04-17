@@ -428,7 +428,7 @@ export function FinanceManager() {
           <SelectContent>
             {orders.map((order) => (
               <SelectItem key={order.id} value={order.id}>
-                {order.vpoNumber} | {order.workflowStatus || 'PO_UPLOADED'}
+                {order.vpoNumber} | {order.workflowStatus || 'DRAFTING'}
               </SelectItem>
             ))}
           </SelectContent>
@@ -500,7 +500,7 @@ export function FinanceManager() {
           <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
           {t('FinanceManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
-            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
+            {selectedOrder.workflowStatus || 'DRAFTING'}
           </span>{' '}
           | {t('FinanceManager.sales', 'Sales')}:{' '}
           <span className="font-medium text-foreground">

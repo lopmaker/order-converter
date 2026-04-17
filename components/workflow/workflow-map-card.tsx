@@ -69,63 +69,61 @@ export function WorkflowMapCard({
 
   const FLOW_STAGES = [
     {
-      key: 'PO_UPLOADED',
-      title: t('Workflow.stage1Title', '1. PO Uploaded'),
-      trigger: t('Workflow.stage1Trigger', 'Save order'),
-      summary: t('Workflow.stage1Summary', 'Order and line items are created from customer PO.'),
-    },
-    {
-      key: 'SHIPPING_DOC_SENT',
-      title: t('Workflow.stage2Title', '2. Shipping Doc Sent'),
-      trigger: t('Workflow.stage2Trigger', 'Send Shipping Doc'),
-      summary: t('Workflow.stage2Summary', 'Shipping document is issued for 3PL booking.'),
-    },
-    {
-      key: 'IN_TRANSIT',
-      title: t('Workflow.stage3Title', '3. In Transit'),
-      trigger: t('Workflow.stage3Trigger', 'Start Transit'),
+      key: 'DRAFTING',
+      title: t('Workflow.stage1Title', '1. 下单 / Drafting'),
+      trigger: t('Workflow.stage1Trigger', '录入客户 PDF + 工厂价'),
       summary: t(
-        'Workflow.stage3Summary',
-        'Shipment is in transit and AR/AP core docs are opened.'
+        'Workflow.stage1Summary',
+        '客户 PDF 已录入；业务经理录入工厂价后系统自动计算毛利。'
       ),
     },
     {
-      key: 'AR_AP_OPEN',
-      title: t('Workflow.stage4Title', '4. AR/AP Open'),
-      trigger: t('Workflow.stage4Trigger', 'Mark Delivered'),
+      key: 'PRODUCTION',
+      title: t('Workflow.stage2Title', '2. 生产 / Production'),
+      trigger: t('Workflow.stage2Trigger', '建立生产批次'),
+      summary: t('Workflow.stage2Summary', '工厂排期中，处理延期、分批、客户改单。'),
+    },
+    {
+      key: 'LOGISTICS',
+      title: t('Workflow.stage3Title', '3. 物流 / Logistics'),
+      trigger: t('Workflow.stage3Trigger', '装柜 / 订舱'),
+      summary: t(
+        'Workflow.stage3Summary',
+        '装柜、报关、出运；第三方物流同步录入柜号、提单、到港状态。'
+      ),
+    },
+    {
+      key: 'SETTLEMENT',
+      title: t('Workflow.stage4Title', '4. 结算 / Settlement'),
+      trigger: t('Workflow.stage4Trigger', '开商业发票 / 标记交付'),
       summary: t(
         'Workflow.stage4Summary',
-        'Delivered; payment collection and payouts are in progress.'
+        '分批开票给客户；跟踪客户收款与付工厂款（按账期自动生成时间表）。'
       ),
     },
     {
       key: 'CLOSED',
-      title: t('Workflow.stage5Title', '5. Closed'),
-      trigger: t('Workflow.stage5Trigger', 'Auto by payment completion'),
-      summary: t('Workflow.stage5Summary', 'All related AR/AP documents are fully paid.'),
+      title: t('Workflow.stage5Title', '5. 已关闭 / Closed'),
+      trigger: t('Workflow.stage5Trigger', '全部付清自动关闭'),
+      summary: t('Workflow.stage5Summary', '所有应收应付已结清，毛利入账。'),
     },
   ];
 
   const ACTION_EFFECTS = [
     {
-      action: t('Workflow.actionSendShippingDoc', 'Send Shipping Doc'),
-      result: t('Workflow.actionSendShippingDocResult', 'Moves order to SHIPPING_DOC_SENT'),
-      writes: t('Workflow.actionSendShippingDocWrites', 'Creates shipping_documents if missing.'),
-    },
-    {
       action: t('Workflow.actionStartTransit', 'Start Transit'),
-      result: t('Workflow.actionStartTransitResult', 'Moves order to IN_TRANSIT'),
+      result: t('Workflow.actionStartTransitResult', '推进到物流 / 结算阶段'),
       writes: t(
         'Workflow.actionStartTransitWrites',
-        'Creates commercial_invoices and vendor_bills if missing. Updates container to IN_TRANSIT when linked.'
+        '若缺失，自动创建 shipping_documents、commercial_invoices、vendor_bills；关联的集装箱 status 置为 IN_TRANSIT。'
       ),
     },
     {
       action: t('Workflow.actionMarkDelivered', 'Mark Delivered'),
-      result: t('Workflow.actionMarkDeliveredResult', 'Moves order to AR_AP_OPEN'),
+      result: t('Workflow.actionMarkDeliveredResult', '推进到结算 / 已关闭阶段'),
       writes: t(
         'Workflow.actionMarkDeliveredWrites',
-        'Sets delivered_at and creates logistics_bills if missing. Updates container arrival timestamps when linked.'
+        '设置 delivered_at；若缺失，自动创建 logistics_bills；关联的集装箱标记到港时间戳。'
       ),
     },
   ];
