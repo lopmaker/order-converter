@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateEstimatedMargin, parseDecimalInput, sumPaidAmount } from './finance-math';
+import { calculateEstimatedMargin, parseDecimalInput, sumPaidAmount } from './workflow';
 
 describe('calculateEstimatedMargin', () => {
   it('should calculate margins correctly with standard positive inputs', () => {

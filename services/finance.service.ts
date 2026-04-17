@@ -9,7 +9,7 @@ import {
     vendorBills,
 } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { addDays, parseDecimalInput, round2 } from '@/lib/finance-math';
+import { addDays, parseDecimalInput, round2 } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
 import {
     commercialInvoiceSchema,
@@ -96,6 +96,12 @@ export async function createCommercialInvoice(data: z.infer<typeof commercialInv
         })
         .returning();
 
+    await db
+        .update(orders)
+        .set({
+            workflowStatus: order.workflowStatus === 'DELIVERED' ? 'AR_AP_OPEN' : order.workflowStatus,
+        })
+        .where(eq(orders.id, data.orderId));
     await recomputeOrderWorkflowStatus(data.orderId);
 
     return saved;

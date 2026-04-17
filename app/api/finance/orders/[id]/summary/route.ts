@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { commercialInvoices, logisticsBills, payments, vendorBills } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { parseDecimalInput, round2 } from '@/lib/finance-math';
+import { parseDecimalInput, round2 } from '@/lib/workflow';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';

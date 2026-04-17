@@ -3,7 +3,7 @@ import { db } from '@/db';
 import { tariffRates } from '@/db/schema';
 import { asc, eq } from 'drizzle-orm';
 import { defaultTariffRateByTariffKey, normalizeTariffKey } from '@/lib/tariffs';
-import { parseDecimalInput, round4 } from '@/lib/finance-math';
+import { parseDecimalInput, round4 } from '@/lib/workflow';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Unknown error';

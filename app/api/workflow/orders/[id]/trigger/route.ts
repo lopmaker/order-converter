@@ -11,13 +11,13 @@ import {
   logisticsBills,
 } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { addDays, parseDecimalInput, round2 } from '@/lib/finance-math';
+import { addDays, parseDecimalInput, round2 } from '@/lib/workflow';
 import { recomputeOrderWorkflowStatus } from '@/lib/workflow-status';
 import { getErrorMessage, createDefaultCode } from '@/lib/api-helpers';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-type TriggerAction = 'START_TRANSIT' | 'MARK_DELIVERED';
+type TriggerAction = 'GENERATE_SHIPPING_DOC' | 'START_TRANSIT' | 'MARK_DELIVERED';
 
 function getVendorAmount(
   items: Array<{ quantity: number | null; vendorUnitPrice: string | null }>
@@ -33,6 +33,7 @@ function getVendorAmount(
 
 function normalizeAction(action?: string): TriggerAction | null {
   const normalized = (action || '').trim().toUpperCase();
+  if (normalized === 'GENERATE_SHIPPING_DOC') return 'GENERATE_SHIPPING_DOC';
   if (normalized === 'START_TRANSIT') return 'START_TRANSIT';
   if (normalized === 'MARK_DELIVERED') return 'MARK_DELIVERED';
   return null;
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     const action = normalizeAction(body.action);
     if (!action) {
       return NextResponse.json(
-        { error: 'action must be one of START_TRANSIT, MARK_DELIVERED' },
+        { error: 'action must be one of GENERATE_SHIPPING_DOC, START_TRANSIT, MARK_DELIVERED' },
         { status: 400 }
       );
     }
@@ -81,19 +82,22 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       action,
       orderId: id,
       created: {},
+      updated: {},
     };
+
+
 
     if (action === 'START_TRANSIT') {
       const existingDoc = containerId
         ? await db.query.shippingDocuments.findFirst({
-            where: and(
-              eq(shippingDocuments.orderId, id),
-              eq(shippingDocuments.containerId, containerId)
-            ),
-          })
+          where: and(
+            eq(shippingDocuments.orderId, id),
+            eq(shippingDocuments.containerId, containerId)
+          ),
+        })
         : await db.query.shippingDocuments.findFirst({
-            where: eq(shippingDocuments.orderId, id),
-          });
+          where: eq(shippingDocuments.orderId, id),
+        });
 
       let shippingDoc = existingDoc;
       if (!shippingDoc) {
@@ -165,15 +169,21 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       if (containerId) {
         await db
           .update(containers)
-          .set({ status: 'IN_TRANSIT', atd: new Date() })
+          .set({
+            status: 'IN_TRANSIT',
+            atd: new Date(),
+          })
           .where(eq(containers.id, containerId));
       }
+
+      await db.update(orders).set({ workflowStatus: 'IN_TRANSIT' }).where(eq(orders.id, id));
 
       result.created = {
         shippingDocument: !existingDoc,
         commercialInvoice: !existingInvoice,
         vendorBill: !existingVendorBill,
       };
+      result.updated = { workflowStatus: 'IN_TRANSIT' };
       result.shippingDocument = shippingDoc;
       result.commercialInvoice = invoice;
       result.vendorBill = vendorBill;
@@ -182,7 +192,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     if (action === 'MARK_DELIVERED') {
       const deliveredAt = body.deliveredAt ? new Date(body.deliveredAt) : new Date();
 
-      await db.update(orders).set({ deliveredAt }).where(eq(orders.id, id));
+      await db
+        .update(orders)
+        .set({
+          deliveredAt,
+          workflowStatus: 'AR_AP_OPEN',
+        })
+        .where(eq(orders.id, id));
 
       if (containerId) {
         await db
@@ -195,6 +211,7 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
           .where(eq(containers.id, containerId));
       }
 
+      // Automatically generate 3PL Logistics Bill if it doesn't exist
       const existingLogisticsBill = await db.query.logisticsBills.findFirst({
         where: eq(logisticsBills.orderId, id),
       });
@@ -225,12 +242,20 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       }
 
       result.created = { logisticsBill: !existingLogisticsBill };
-      result.deliveredAt = deliveredAt.toISOString();
-      result.logisticsBill = logisticsBill;
+      result.updated = {
+        workflowStatus: 'AR_AP_OPEN',
+        deliveredAt: deliveredAt.toISOString(),
+      };
+      result.logisticsBill = null;
     }
 
     const recomputed = await recomputeOrderWorkflowStatus(id);
-    result.workflowStatus = recomputed?.workflowStatus ?? null;
+    if (recomputed) {
+      result.updated = {
+        ...(result.updated as Record<string, unknown>),
+        workflowStatus: recomputed.workflowStatus,
+      };
+    }
 
     return NextResponse.json({ success: true, data: result });
   } catch (error: unknown) {

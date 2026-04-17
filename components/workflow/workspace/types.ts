@@ -123,7 +123,7 @@ export interface PaymentRow {
     notes: string | null;
 }
 
-export type WorkflowAction = 'START_TRANSIT' | 'MARK_DELIVERED';
+export type WorkflowAction = 'GENERATE_SHIPPING_DOC' | 'START_TRANSIT' | 'MARK_DELIVERED';
 export type RollbackAction = 'UNDO_MARK_DELIVERED' | 'UNDO_START_TRANSIT' | 'UNDO_SHIPPING_DOC';
 
 export const AUTO_CONTAINER = 'AUTO';

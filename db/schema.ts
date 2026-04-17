@@ -27,9 +27,9 @@ export const orders = pgTable(
     customerAddress: text('customer_address'),
     supplierName: text('supplier_name'),
     supplierAddress: text('supplier_address'),
-    vendorId: uuid('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
     orderDate: timestamp('order_date', { withTimezone: true }),
     totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
+    status: text('status').default('Confirmed'),
 
     // New Fields
     soReference: text('so_reference'),
@@ -40,7 +40,7 @@ export const orders = pgTable(
     shipmentTerms: text('shipment_terms'),
     paymentTerms: text('payment_terms'),
     customerNotes: text('customer_notes'),
-    workflowStatus: text('workflow_status').default('DRAFTING'),
+    workflowStatus: text('workflow_status').default('PO_UPLOADED'),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     closedAt: timestamp('closed_at', { withTimezone: true }),
     customerTermDays: integer('customer_term_days').default(30),
@@ -54,8 +54,8 @@ export const orders = pgTable(
   (orders) => ({
     vpoNumberIndex: index('vpo_number_idx').on(orders.vpoNumber),
     customerNameIndex: index('customer_name_idx').on(orders.customerName),
+    statusIndex: index('status_idx').on(orders.status),
     workflowStatusIndex: index('workflow_status_idx').on(orders.workflowStatus),
-    vendorIdIndex: index('orders_vendor_id_idx').on(orders.vendorId),
   })
 );
 
@@ -121,11 +121,6 @@ export const containers = pgTable(
     eta: timestamp('eta', { withTimezone: true }),
     ata: timestamp('ata', { withTimezone: true }),
     arrivalAtWarehouse: timestamp('arrival_at_warehouse', { withTimezone: true }),
-    // Customs tracking (filled by 3PL via external link or by sales manually)
-    customsExportStatus: text('customs_export_status').default('NOT_STARTED'), // NOT_STARTED | IN_PROGRESS | CLEARED
-    customsExportClearedAt: timestamp('customs_export_cleared_at', { withTimezone: true }),
-    customsImportStatus: text('customs_import_status').default('NOT_STARTED'), // NOT_STARTED | IN_PROGRESS | CLEARED
-    customsImportClearedAt: timestamp('customs_import_cleared_at', { withTimezone: true }),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (containers) => ({
@@ -261,63 +256,5 @@ export const payments = pgTable(
   },
   (payments) => ({
     targetIndex: index('target_idx').on(payments.targetType, payments.targetId),
-  })
-);
-
-// Production Lots: a VPO may split into multiple production batches
-// (factory delays, partial capacity, etc.). Each lot is tracked independently.
-export const productionLots = pgTable(
-  'production_lots',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    orderId: uuid('order_id')
-      .references(() => orders.id, { onDelete: 'cascade' })
-      .notNull(),
-    lotNumber: text('lot_number').notNull(), // e.g. "VPO-3421-LOT-1"
-    status: text('status').notNull().default('PLANNED'), // PLANNED | IN_PRODUCTION | COMPLETED | CANCELLED
-    quantity: integer('quantity'),
-    plannedStartDate: timestamp('planned_start_date', { withTimezone: true }),
-    actualStartDate: timestamp('actual_start_date', { withTimezone: true }),
-    plannedCompleteDate: timestamp('planned_complete_date', { withTimezone: true }),
-    actualCompleteDate: timestamp('actual_complete_date', { withTimezone: true }),
-    delayReason: text('delay_reason'),
-    notes: text('notes'),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
-  },
-  (table) => ({
-    orderIdIndex: index('production_lot_order_id_idx').on(table.orderId),
-    statusIndex: index('production_lot_status_idx').on(table.status),
-    lotNumberIndex: uniqueIndex('production_lot_number_idx').on(table.lotNumber),
-  })
-);
-
-// Order Revisions: audit trail of all customer-requested changes to a VPO.
-// Captures before/after snapshots and the margin impact of each change.
-export const orderRevisions = pgTable(
-  'order_revisions',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    orderId: uuid('order_id')
-      .references(() => orders.id, { onDelete: 'cascade' })
-      .notNull(),
-    revisionNumber: integer('revision_number').notNull(), // 1, 2, 3...
-    revisionType: text('revision_type').notNull(), // QUANTITY | PRICE | STYLE | DATE | MIXED
-    beforeSnapshot: text('before_snapshot'), // JSON stringified
-    afterSnapshot: text('after_snapshot'), // JSON stringified
-    marginImpact: decimal('margin_impact', { precision: 12, scale: 2 }), // positive or negative
-    requestedBy: text('requested_by'), // "客户" | "工厂" | "内部"
-    requestedAt: timestamp('requested_at', { withTimezone: true }),
-    appliedBy: text('applied_by'), // name of sales manager who applied
-    appliedAt: timestamp('applied_at', { withTimezone: true }).defaultNow(),
-    notes: text('notes'),
-    createdAt: timestamp('created_at').defaultNow(),
-  },
-  (table) => ({
-    orderIdIndex: index('order_revision_order_id_idx').on(table.orderId),
-    orderRevisionUnique: uniqueIndex('order_revision_order_rev_idx').on(
-      table.orderId,
-      table.revisionNumber
-    ),
   })
 );

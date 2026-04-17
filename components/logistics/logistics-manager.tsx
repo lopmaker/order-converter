@@ -344,6 +344,20 @@ export function LogisticsManager() {
     });
   };
 
+  const sendShippingDoc = async () => {
+    if (!selectedOrderId) return;
+    await runAction('SEND_DOC', async () => {
+      await fetch(`/api/workflow/orders/${selectedOrderId}/trigger`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'GENERATE_SHIPPING_DOC',
+          containerId: selectedContainerId || undefined,
+        }),
+      });
+    });
+  };
+
   const startTransit = async () => {
     if (!selectedOrderId) return;
     await runAction('START_TRANSIT', async () => {
@@ -928,7 +942,7 @@ export function LogisticsManager() {
           <SelectContent>
             {orders.map((order) => (
               <SelectItem key={order.id} value={order.id}>
-                {order.vpoNumber} | {order.workflowStatus || 'DRAFTING'}
+                {order.vpoNumber} | {order.workflowStatus || 'PO_UPLOADED'}
               </SelectItem>
             ))}
           </SelectContent>
@@ -952,6 +966,15 @@ export function LogisticsManager() {
           </SelectContent>
         </Select>
 
+        <Button
+          variant="outline"
+          disabled={!selectedOrderId || busyAction === 'SEND_DOC'}
+          onClick={sendShippingDoc}
+        >
+          {busyAction === 'SEND_DOC'
+            ? t('LogisticsManager.sending', 'Sending...')
+            : t('LogisticsManager.sendShippingDoc', 'Send Shipping Doc')}
+        </Button>
         <Button
           variant="outline"
           disabled={!selectedOrderId || busyAction === 'START_TRANSIT'}
@@ -1017,7 +1040,7 @@ export function LogisticsManager() {
           <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
           {t('LogisticsManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
-            {selectedOrder.workflowStatus || 'DRAFTING'}
+            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
           </span>
         </div>
       )}

@@ -25,7 +25,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       .update(orders)
       .set({
         workflowStatus: body.status.trim(),
-        deliveredAt: body.deliveredAt ? new Date(body.deliveredAt) : undefined,
+        deliveredAt: body.deliveredAt
+          ? new Date(body.deliveredAt)
+          : body.status === 'DELIVERED'
+            ? new Date()
+            : undefined,
         customerTermDays:
           typeof body.customerTermDays === 'number' ? body.customerTermDays : undefined,
         vendorTermDays: typeof body.vendorTermDays === 'number' ? body.vendorTermDays : undefined,

@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { orders, orderItems, tariffRates, vendors } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/finance-math';
+import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/workflow';
 import {
     deriveTariffKey,
     inferOriginCountry,
@@ -109,7 +109,8 @@ export async function createOrderFromExtraction(data: SaveOrderPayload) {
             supplierAddress: data.supplierAddress,
             orderDate: data.orderDate,
             totalAmount: totalRevenue.toFixed(2),
-            workflowStatus: 'DRAFTING',
+            status: 'Confirmed',
+            workflowStatus: 'PO_UPLOADED',
             soReference: data.soReference,
             expShipDate: data.expShipDate,
             cancelDate: data.cancelDate,
