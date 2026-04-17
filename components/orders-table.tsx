@@ -25,7 +25,7 @@ interface OrdersTableProps {
   pageSize: number;
 }
 
-type WorkflowAction = 'GENERATE_SHIPPING_DOC' | 'START_TRANSIT' | 'MARK_DELIVERED';
+type WorkflowAction = 'START_TRANSIT' | 'MARK_DELIVERED';
 
 export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersTableProps) {
   const router = useRouter();
@@ -355,17 +355,6 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                             {/* Action Bar */}
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled={!!workflowLoading || editMode}
-                                  onClick={() => triggerWorkflow('GENERATE_SHIPPING_DOC')}
-                                >
-                                  {workflowLoading === 'GENERATE_SHIPPING_DOC' ? (
-                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                  ) : null}
-                                  {t('OrdersTable.sendShippingDoc', 'Send Shipping Doc')}
-                                </Button>
                                 <Button
                                   size="sm"
                                   variant="secondary"

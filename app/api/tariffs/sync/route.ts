@@ -7,7 +7,7 @@ import {
   inferOriginCountry,
   normalizeTariffKey,
 } from '@/lib/tariffs';
-import { parseDecimalInput, round4 } from '@/lib/workflow';
+import { parseDecimalInput, round4 } from '@/lib/finance-math';
 import { eq } from 'drizzle-orm';
 
 function getErrorMessage(error: unknown): string {

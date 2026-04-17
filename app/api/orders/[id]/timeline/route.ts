@@ -11,7 +11,7 @@ import {
   vendorBills,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { parseDecimalInput, round2 } from '@/lib/workflow';
+import { parseDecimalInput, round2 } from '@/lib/finance-math';
 
 type RouteContext = { params: Promise<{ id: string }> };
 

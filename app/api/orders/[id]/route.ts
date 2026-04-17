@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { orders, orderItems, tariffRates } from '@/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
-import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/workflow';
+import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/finance-math';
 import {
   deriveTariffKey,
   inferOriginCountry,

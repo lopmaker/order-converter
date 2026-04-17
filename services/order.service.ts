@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { orders, orderItems, tariffRates, vendors } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/workflow';
+import { calculateEstimatedMargin, parseDecimalInput, round2, round4 } from '@/lib/finance-math';
 import {
     deriveTariffKey,
     inferOriginCountry,
