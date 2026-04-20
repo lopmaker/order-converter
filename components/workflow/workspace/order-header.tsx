@@ -22,6 +22,7 @@ import {
 import { statusBadgeVariant } from './utils';
 import { VendorSelector } from './vendor-selector';
 import { useI18n } from '@/components/locale-provider';
+import { getStageLabelZh } from '@/lib/workflow-stages';
 
 export function OrderHeader({
     order,
@@ -56,7 +57,7 @@ export function OrderHeader({
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('OrderWorkspace.order', 'Order')} {order.vpoNumber}</h1>
                         <Badge variant={statusBadgeVariant(order.workflowStatus)} className="rounded-md px-2 py-0.5 shadow-sm text-xs font-medium">
-                            {order.workflowStatus || 'OPEN'}
+                            {getStageLabelZh(order.workflowStatus)}
                         </Badge>
                     </div>
                     <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">

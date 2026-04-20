@@ -18,6 +18,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useI18n } from '@/components/locale-provider';
 
 import { type SerializedOrder, type OrderItem, type OrderWithItems } from '@/lib/types';
+import { getStageLabelZh } from '@/lib/workflow-stages';
 
 interface OrdersTableProps {
   initialOrders: SerializedOrder[];
@@ -308,7 +309,7 @@ export function OrdersTable({ initialOrders, initialHasMore, pageSize }: OrdersT
                     {order.paymentTerms || '-'}
                   </TableCell>
                   <TableCell className="text-xs whitespace-nowrap">
-                    {order.workflowStatus || '-'}
+                    {getStageLabelZh(order.workflowStatus)}
                   </TableCell>
                   <TableCell className="text-right font-medium whitespace-nowrap">
                     ${order.totalAmount || '0'}

@@ -21,6 +21,7 @@ import {
 import { formatDate } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
 import { useI18n } from '@/components/locale-provider';
+import { getStageLabelZh } from '@/lib/workflow-stages';
 
 interface OrderOption {
   id: string;
@@ -928,7 +929,7 @@ export function LogisticsManager() {
           <SelectContent>
             {orders.map((order) => (
               <SelectItem key={order.id} value={order.id}>
-                {order.vpoNumber} | {order.workflowStatus || 'PO_UPLOADED'}
+                {order.vpoNumber} | {getStageLabelZh(order.workflowStatus)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -1017,7 +1018,7 @@ export function LogisticsManager() {
           <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
           {t('LogisticsManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
-            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
+            {getStageLabelZh(selectedOrder.workflowStatus)}
           </span>
         </div>
       )}

@@ -21,6 +21,7 @@ import {
 import { money, formatDate } from '@/lib/format';
 import { usePromptDialog, PromptDialog } from '@/components/ui/prompt-dialog';
 import { useI18n } from '@/components/locale-provider';
+import { getStageLabelZh } from '@/lib/workflow-stages';
 
 interface OrderOption {
   id: string;
@@ -428,7 +429,7 @@ export function FinanceManager() {
           <SelectContent>
             {orders.map((order) => (
               <SelectItem key={order.id} value={order.id}>
-                {order.vpoNumber} | {order.workflowStatus || 'PO_UPLOADED'}
+                {order.vpoNumber} | {getStageLabelZh(order.workflowStatus)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -500,7 +501,7 @@ export function FinanceManager() {
           <span className="font-medium text-foreground">{selectedOrder.vpoNumber}</span> |{' '}
           {t('FinanceManager.workflow', 'Workflow')}:{' '}
           <span className="font-medium text-foreground">
-            {selectedOrder.workflowStatus || 'PO_UPLOADED'}
+            {getStageLabelZh(selectedOrder.workflowStatus)}
           </span>{' '}
           | {t('FinanceManager.sales', 'Sales')}:{' '}
           <span className="font-medium text-foreground">
