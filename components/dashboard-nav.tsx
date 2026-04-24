@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, FileText, Truck, DollarSign, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, FileText, Truck, DollarSign, Factory, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/components/locale-provider';
 
 export function DashboardNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
@@ -30,6 +30,11 @@ export function DashboardNav({ className, ...props }: React.HTMLAttributes<HTMLE
       title: t('Dashboard.finance', 'Finance'),
       href: '/dashboard/finance',
       icon: DollarSign,
+    },
+    {
+      title: t('Dashboard.vendors', '工厂'),
+      href: '/dashboard/vendors',
+      icon: Factory,
     },
   ];
 
